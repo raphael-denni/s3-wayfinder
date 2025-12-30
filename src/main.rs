@@ -11,10 +11,12 @@ use tracing::info;
 
 mod commands;
 mod config;
+mod tui;
 
 // The main entry point for the sherpa-s3 CLI application.
 #[tokio::main]
 async fn main() {
+    #[cfg(debug_assertions)]
     tracing_subscriber::fmt::init();
 
     let s3_config = config::handle_config().unwrap();
@@ -23,7 +25,7 @@ async fn main() {
     let cli = commands::Cli::parse();
 
     match &cli.commands {
-        commands::Commands::Ls { bucket } => {
+        Some(commands::Commands::Ls { bucket }) => {
             info!("'ls' command called");
 
             if let Err(e) = commands::ls::run_ls(&client, bucket.clone()).await {
@@ -32,10 +34,10 @@ async fn main() {
             }
         }
 
-        commands::Commands::Cp {
+        Some(commands::Commands::Cp {
             source,
             destination,
-        } => {
+        }) => {
             info!("'cp' command called");
 
             if let Err(e) = commands::cp::run_cp(&client, source, destination).await {
@@ -44,11 +46,20 @@ async fn main() {
             }
         }
 
-        commands::Commands::Rm { bucket, s3_object } => {
+        Some(commands::Commands::Rm { bucket, s3_object }) => {
             info!("'rm' command called");
 
             if let Err(e) = commands::rm::run_rm(&client, bucket, s3_object.clone()).await {
                 eprintln!("Error executing rm command: {}", e);
+                std::process::exit(1);
+            }
+        }
+
+        Some(commands::Commands::Tui) | None => {
+            info!("'tui' interface called");
+
+            if let Err(e) = tui::run(&client).await {
+                eprintln!("Error executing the TUI: {}", e);
                 std::process::exit(1);
             }
         }

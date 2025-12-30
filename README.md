@@ -82,6 +82,7 @@ sherpa rm object
 ## 📚 Documentation
 
 You can find all information related to this project and how to use it on the [Codeberg wiki](https://codeberg.org/raphael-denni/sherpa-s3/wiki).
+
 ## 📜 License
 
 Licensed under either of

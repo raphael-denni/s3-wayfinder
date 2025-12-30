@@ -5,10 +5,11 @@
 //! for the sherpa-s3 application using the `clap` crate.
 //! It includes commands for listing, copying, and removing S3 objects.
 
+use clap::Parser;
+
 pub mod cp;
 pub mod ls;
 pub mod rm;
-use clap::Parser;
 
 /// # CLI Commands for sherpa-s3
 ///
@@ -23,12 +24,12 @@ pub enum Commands {
         /// The bucket to list objects from. If not provided, lists all buckets.
         bucket: Option<String>,
     },
-    /// Copy an S3 object from source to destination
-    /// Format: sherpa cp s3://source-bucket/source-key s3://dest-bucket/dest-key
+    /// Copy S3 to S3, local to S3, and S3 to local.
+    /// Format for S3 URIs: s3://bucket/key
     Cp {
-        /// The source S3 object URI
+        /// The source S3 object URI or local file path
         source: String,
-        /// The destination S3 object URI
+        /// The destination S3 object URI or local file path
         destination: String,
     },
     /// Remove a bucket or object from S3 storage
@@ -38,6 +39,8 @@ pub enum Commands {
         /// The object key (optional)
         s3_object: Option<String>,
     },
+    /// Launch the interactive TUI for sherpa-s3
+    Tui,
 }
 
 /// # Command Line Interface for sherpa-s3
@@ -51,5 +54,5 @@ pub enum Commands {
 pub struct Cli {
     #[command(subcommand)]
     /// The subcommands for the CLI.
-    pub commands: Commands,
+    pub commands: Option<Commands>,
 }

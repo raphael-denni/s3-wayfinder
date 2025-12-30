@@ -74,7 +74,7 @@ pub async fn run_ls(
                 }
 
                 Err(e) => {
-                    eprintln!("Error: Could not list S3 buckets: {}", e);
+                    eprintln!("Error: Could not list S3 buckets: {:?}", e);
                     return Err(e.into());
                 }
             }
