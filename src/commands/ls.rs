@@ -5,6 +5,39 @@
 
 use aws_sdk_s3::Client;
 
+/// # List S3 Buckets
+/// Returns a list of bucket names
+pub async fn list_buckets(client: &Client) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let output = client.list_buckets().send().await?;
+
+    let buckets = output
+        .buckets
+        .unwrap_or_default()
+        .into_iter()
+        .map(|b| b.name.unwrap_or_else(|| "N/A".to_string()))
+        .collect();
+
+    Ok(buckets)
+}
+
+/// # List S3 Objects
+/// Returns a list of object keys in the specified bucket.
+pub async fn list_objects(
+    client: &Client,
+    bucket: &str,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let output = client.list_objects_v2().bucket(bucket).send().await?;
+
+    let objects = output
+        .contents
+        .unwrap_or_default()
+        .into_iter()
+        .map(|o| o.key.unwrap_or_else(|| "N/A".to_string()))
+        .collect();
+
+    Ok(objects)
+}
+
 /// # Run 'ls' Command
 /// This function lists S3 buckets or objects within a specified bucket.
 ///
@@ -22,30 +55,15 @@ pub async fn run_ls(
         Some(bucket_name) => {
             println!("Listing objects in bucket: {}", bucket_name);
 
-            match client.list_objects_v2().bucket(&bucket_name).send().await {
-                Ok(output) => {
-                    if let Some(contents) = output.contents {
-                        if contents.is_empty() {
-                            println!("No objects found in bucket '{}'.", bucket_name);
-                        } else {
-                            println!("Objects in '{}':", bucket_name);
+            let objects = list_objects(client, &bucket_name).await?;
 
-                            for object in contents {
-                                println!("  - {}", object.key.unwrap_or_else(|| "N/A".to_string()));
-                            }
-                        }
-                    } else {
-                        println!("No objects found in bucket '{}'.", bucket_name);
-                    }
-                }
+            if objects.is_empty() {
+                println!("No objects found in bucket '{}'.", bucket_name);
+            } else {
+                println!("Objects in '{}':", bucket_name);
 
-                Err(e) => {
-                    eprintln!(
-                        "Error: Could not list objects in bucket '{}': {}",
-                        bucket_name, e
-                    );
-
-                    return Err(e.into());
+                for object in objects {
+                    println!("  - {}", object);
                 }
             }
         }
@@ -53,29 +71,15 @@ pub async fn run_ls(
         None => {
             println!("Listing S3 buckets...");
 
-            match client.list_buckets().send().await {
-                Ok(output) => {
-                    if let Some(buckets) = output.buckets {
-                        if buckets.is_empty() {
-                            println!("No S3 buckets found.");
-                        } else {
-                            println!("S3 Buckets:");
+            let buckets = list_buckets(client).await?;
 
-                            for bucket in buckets {
-                                println!(
-                                    "  - {}",
-                                    bucket.name.unwrap_or_else(|| "N/A".to_string())
-                                );
-                            }
-                        }
-                    } else {
-                        println!("No S3 buckets found.");
-                    }
-                }
+            if buckets.is_empty() {
+                println!("No S3 buckets found.");
+            } else {
+                println!("S3 Buckets:");
 
-                Err(e) => {
-                    eprintln!("Error: Could not list S3 buckets: {:?}", e);
-                    return Err(e.into());
+                for bucket in buckets {
+                    println!("  - {}", bucket);
                 }
             }
         }

@@ -29,9 +29,9 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 - [X] Add core command: `rm`
 
 ### Phase 2: TUI
-- [ ] Panes for buckets, objects, etc.
-- [ ] Status bar
-- [ ] Conditional launch
+- [X] Panes for buckets, objects, etc.
+- [X] Status bar
+- [X] Conditional launch
 - [ ] Connect S3 logics
 
 ### Phase 3: Advanced features

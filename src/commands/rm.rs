@@ -6,6 +6,34 @@
 use aws_sdk_s3::Client;
 use std::io::{self, Write};
 
+/// # Delete S3 Object
+/// Deletes an object from the specified bucket.
+pub async fn delete_object(
+    client: &Client,
+    bucket: &str,
+    key: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .delete_object()
+        .bucket(bucket)
+        .key(key)
+        .send()
+        .await?;
+
+    Ok(())
+}
+
+/// # Delete S3 Bucket
+/// Deletes an empty S3 bucket
+pub async fn delete_bucket(
+    client: &Client,
+    bucket: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client.delete_bucket().bucket(bucket).send().await?;
+
+    Ok(())
+}
+
 /// # Run 'rm' Command
 /// This function removes an S3 bucket or an object within a bucket.
 ///
@@ -27,12 +55,7 @@ pub async fn run_rm(
             object_key, bucket
         );
 
-        client
-            .delete_object()
-            .bucket(bucket)
-            .key(object_key)
-            .send()
-            .await?;
+        delete_object(client, bucket, &object_key).await?;
 
         println!("Object deleted successfully.");
     } else {
@@ -49,7 +72,7 @@ pub async fn run_rm(
         if confirmation.trim().eq_ignore_ascii_case("y") {
             println!("Deleting bucket '{}'...", bucket);
 
-            client.delete_bucket().bucket(bucket).send().await?;
+            delete_bucket(client, bucket).await?;
 
             println!("Bucket deleted successfully.");
         } else {

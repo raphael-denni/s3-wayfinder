@@ -25,6 +25,73 @@ fn parse_s3_path(path: &str) -> Result<(&str, &str), &'static str> {
     }
 }
 
+/// # Copy S3 Object
+/// Copies an object from one S3 location to another
+pub async fn copy_object(
+    client: &Client,
+    source_bucket: &str,
+    source_key: &str,
+    dest_bucket: &str,
+    dest_key: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    client
+        .copy_object()
+        .copy_source(format!("{}/{}", source_bucket, source_key))
+        .bucket(dest_bucket)
+        .key(dest_key)
+        .send()
+        .await?;
+    Ok(())
+}
+
+/// # Upload Local File to S3
+pub async fn upload_object(
+    client: &Client,
+    local_path: &str,
+    dest_bucket: &str,
+    dest_key: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut file: File = File::open(local_path).await?;
+    let mut contents = Vec::new();
+
+    file.read_to_end(&mut contents).await?;
+
+    let body = ByteStream::from(contents);
+
+    client
+        .put_object()
+        .bucket(dest_bucket)
+        .key(dest_key)
+        .body(body)
+        .send()
+        .await?;
+
+    Ok(())
+}
+
+/// # Download S3 Object to Local File
+pub async fn download_object(
+    client: &Client,
+    source_bucket: &str,
+    source_key: &str,
+    local_path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut output = client
+        .get_object()
+        .bucket(source_bucket)
+        .key(source_key)
+        .send()
+        .await?;
+
+    let mut file = File::create(local_path).await?;
+
+    while let Some(bytes) = output.body.try_next().await? {
+        file.write_all(&bytes).await?;
+    }
+
+    Ok(())
+}
+
 /// # Run 'cp' Command
 /// This function copies an S3 object from the specified source to the destination.
 ///
@@ -50,13 +117,7 @@ pub async fn run_cp(
 
             println!("Copying from '{}' to '{}'", source, destination);
 
-            client
-                .copy_object()
-                .copy_source(format!("{}/{}", source_bucket, source_key))
-                .bucket(dest_bucket)
-                .key(dest_key)
-                .send()
-                .await?;
+            copy_object(client, source_bucket, source_key, dest_bucket, dest_key).await?;
 
             println!(
                 "Successfully copied object from '{}' to '{}'",
@@ -67,25 +128,12 @@ pub async fn run_cp(
         (false, true) => {
             let (dest_bucket, dest_key) = parse_s3_path(destination)?;
 
-            let mut file: File = File::open(source).await?;
-            let mut contents = Vec::new();
-
-            file.read_to_end(&mut contents).await?;
-
-            let body = ByteStream::from(contents);
-
             println!(
                 "Uploading from local '{}' to S3 '{}'...",
                 source, destination,
             );
 
-            client
-                .put_object()
-                .bucket(dest_bucket)
-                .key(dest_key)
-                .body(body)
-                .send()
-                .await?;
+            upload_object(client, source, dest_bucket, dest_key).await?;
 
             println!(
                 "Successfully uploaded local file '{}' to S3 '{}'",
@@ -101,18 +149,7 @@ pub async fn run_cp(
                 source, destination,
             );
 
-            let mut output = client
-                .get_object()
-                .bucket(source_bucket)
-                .key(source_key)
-                .send()
-                .await?;
-
-            let mut file = File::create(destination).await?;
-
-            while let Some(bytes) = output.body.try_next().await? {
-                file.write_all(&bytes).await?;
-            }
+            download_object(client, source_bucket, source_key, destination).await?;
 
             println!(
                 "Successfully downloaded S3 '{}' to local '{}'",

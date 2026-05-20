@@ -11,7 +11,6 @@
 use std::io;
 
 use aws_sdk_s3::Client;
-use aws_sdk_s3::error::ProvideErrorMetadata;
 use crossterm::{event, execute, terminal};
 use ratatui::{
     Terminal,
@@ -20,10 +19,16 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 
+enum View {
+    Buckets,
+    Objects { bucket: String },
+}
+
 struct App {
-    buckets: Vec<String>,
+    items: Vec<String>,
     state: ListState,
     status: String,
+    view: View,
 }
 
 /// # TUI Application Entry Point
@@ -51,41 +56,23 @@ pub async fn run(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal_instance = Terminal::new(backend).unwrap();
 
-    let response = client.list_buckets().send().await;
-    let (buckets, status) = match response {
-        Ok(output) => {
-            let b = output
-                .buckets
-                .unwrap_or_default()
-                .iter()
-                .map(|b| b.name.clone().unwrap_or_default())
-                .collect();
-            (b, "Connected to S3".to_string())
-        }
-        Err(e) => {
-            let err_msg = e.into_service_error();
-            let msg = if err_msg.code() == Some("InvalidAccessKeyId") {
-                "Error: Invalid Access Key ID. Check config.toml".to_string()
-            } else if err_msg.code() == Some("SignatureDoesNotMatch") {
-                "Error: Invalid Secret Key. Check config.toml".to_string()
-            } else {
-                format!("S3 Error: {}", err_msg.message().unwrap_or("Unknown error"))
-            };
-            (Vec::new(), msg)
-        }
+    let (items, status) = match crate::commands::ls::list_buckets(client).await {
+        Ok(buckets) => (buckets, "Connected to S3".to_string()),
+        Err(e) => (Vec::new(), format!("Error: {}", e)),
     };
 
     let mut app = App {
-        buckets,
+        items,
         state: ListState::default(),
         status,
+        view: View::Buckets,
     };
 
-    if !app.buckets.is_empty() {
+    if !app.items.is_empty() {
         app.state.select(Some(0));
     }
 
-    let app_result = run_app(&mut terminal_instance, &mut app);
+    let app_result = run_app(&mut terminal_instance, &mut app, client).await;
 
     terminal::disable_raw_mode()?;
 
@@ -107,7 +94,11 @@ pub async fn run(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
 
 // The main application loop for the TUI.
 // It handles rendering and user input.
-fn run_app<B: Backend>(terminal_instance: &mut Terminal<B>, app: &mut App) -> io::Result<()> {
+async fn run_app<B: Backend>(
+    terminal_instance: &mut Terminal<B>,
+    app: &mut App,
+    client: &Client,
+) -> io::Result<()> {
     loop {
         terminal_instance.draw(|frame| {
             let chunks = Layout::default()
@@ -125,13 +116,18 @@ fn run_app<B: Backend>(terminal_instance: &mut Terminal<B>, app: &mut App) -> io
             let status_paragraph = Paragraph::new(app.status.as_str()).block(status_block);
 
             let items: Vec<ListItem> = app
-                .buckets
+                .items
                 .iter()
                 .map(|name| ListItem::new(name.as_str()))
                 .collect();
 
+            let list_title = match &app.view {
+                View::Buckets => " Buckets ".to_string(),
+                View::Objects { bucket } => format!(" Objects in {} ", bucket),
+            };
+
             let list = List::new(items)
-                .block(Block::default().borders(Borders::ALL).title(" Buckets "))
+                .block(Block::default().borders(Borders::ALL).title(list_title))
                 .highlight_symbol(">> ")
                 .highlight_style(
                     ratatui::style::Style::default()
@@ -152,7 +148,9 @@ fn run_app<B: Backend>(terminal_instance: &mut Terminal<B>, app: &mut App) -> io
                     event::KeyCode::Down => {
                         let i = match app.state.selected() {
                             Some(i) => {
-                                if i >= app.buckets.len() - 1 {
+                                if i >= app.items.len() - 1 {
+                                    0
+                                } else if i >= app.items.len() - 1 {
                                     0
                                 } else {
                                     i + 1
@@ -162,11 +160,14 @@ fn run_app<B: Backend>(terminal_instance: &mut Terminal<B>, app: &mut App) -> io
                         };
                         app.state.select(Some(i));
                     }
+
                     event::KeyCode::Up => {
                         let i = match app.state.selected() {
                             Some(i) => {
-                                if i == 0 {
-                                    app.buckets.len() - 1
+                                if app.items.is_empty() {
+                                    0
+                                } else if i == 0 {
+                                    app.items.len() - 1
                                 } else {
                                     i - 1
                                 }
@@ -175,6 +176,67 @@ fn run_app<B: Backend>(terminal_instance: &mut Terminal<B>, app: &mut App) -> io
                         };
                         app.state.select(Some(i));
                     }
+
+                    event::KeyCode::Enter => {
+                        if let Some(i) = app.state.selected() {
+                            if app.items.is_empty() {
+                                continue;
+                            }
+
+                            let selected = app.items[i].clone();
+
+                            match &app.view {
+                                View::Buckets => {
+                                    app.status = format!("Loading objects for {}...", selected);
+
+                                    match crate::commands::ls::list_objects(client, &selected).await
+                                    {
+                                        Ok(objects) => {
+                                            app.items = objects;
+                                            app.view = View::Objects {
+                                                bucket: selected.clone(),
+                                            };
+                                            app.state.select(if app.items.is_empty() {
+                                                None
+                                            } else {
+                                                Some(0)
+                                            });
+                                            app.status = format!("Viewing bucket: {}", selected);
+                                        }
+
+                                        Err(e) => app.status = format!("Error: {}", e),
+                                    }
+                                }
+
+                                View::Objects { bucket } => {
+                                    app.status =
+                                        format!("Selected object {} in {}", selected, bucket);
+                                }
+                            }
+                        }
+                    }
+
+                    event::KeyCode::Esc | event::KeyCode::Backspace => {
+                        if let View::Objects { .. } = app.view {
+                            app.status = "Loading buckets...".to_string();
+
+                            match crate::commands::ls::list_buckets(client).await {
+                                Ok(buckets) => {
+                                    app.items = buckets;
+                                    app.view = View::Buckets;
+                                    app.state.select(if app.items.is_empty() {
+                                        None
+                                    } else {
+                                        Some(0)
+                                    });
+                                    app.status = "Connected to S3".to_string();
+                                }
+
+                                Err(e) => app.status = format!("Error: {}", e),
+                            }
+                        }
+                    }
+
                     _ => {}
                 }
             }
