@@ -1,15 +1,15 @@
-# Sherpa S3 – a friendly Rust TUI/CLI for S3-compatible object storage
+# S3 Wayfinder – a friendly Rust TUI/CLI for S3-compatible object storage
 
-*Through the wilderness of object storage, Sherpa S3 will be your guide.*
+*Through the wilderness of object storage, S3 Wayfinder will be your guide.*
 
 > [!WARNING]
 > This project is still in early development. Features may be incomplete or unstable. Installation methods and documentation are also a work in progress.
 
-Using CLI tools for S3-compatible storage can be very hard to use, especially for newcomers. Sherpa S3 aims to provide a friendly and easy-to-use TUI (Text User Interface) and CLI (Command Line Interface) for managing these storage services. It aims to be compatible with services like Amazon S3, Backblaze B2 and others. 
+Using CLI tools for S3-compatible storage can be very hard to use, especially for newcomers. S3 Wayfinder aims to provide a friendly and easy-to-use TUI (Text User Interface) and CLI (Command Line Interface) for managing these storage services. It aims to be compatible with services like Amazon S3, Backblaze B2 and others. 
 
 **Source Repositories:**
-- Main: [Codeberg](https://codeberg.org/raphael-denni/sherpa-s3)
-- Mirror: [GitHub](https://github.com/raphael-denni/sherpa-s3)
+- Main: [Codeberg](https://codeberg.org/raphael-denni/s3-wayfinder)
+- Mirror: [GitHub](https://github.com/raphael-denni/s3-wayfinder)
 
 ## ✨ Features
 
@@ -50,14 +50,14 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 ## 📦 Installation
 
 ### From precompiled binaries
-You can install Sherpa S3 by downloading the precompiled binaries from the [Releases](https://codeberg.org/raphael-denni/sherpa-s3/releases) page on Codeberg. Choose the appropriate binary for your operating system and architecture.
+You can install S3 Wayfinder by downloading the precompiled binaries from the [Releases](https://codeberg.org/raphael-denni/s3-wayfinder/releases) page on Codeberg. Choose the appropriate binary for your operating system and architecture.
 
 ### From source
-To build Sherpa S3 from source, you need to have Rust and Cargo installed on your system. You can then clone the repository and build the project using the following commands:
+To build S3 Wayfinder from source, you need to have Rust and Cargo installed on your system. You can then clone the repository and build the project using the following commands:
 
 ```bash
-git clone https://codeberg.org/raphael-denni/sherpa-s3.git
-cd sherpa-s3
+git clone https://codeberg.org/raphael-denni/s3-wayfinder.git
+cd s3-wayfinder
 cargo build --release
 ```
 
@@ -65,23 +65,23 @@ This will create an executable in the `target/release` directory.
 
 ## 🚀 Usage
 
-After installation, you can run Sherpa S3 from the command line. For example, to start the TUI, simply run:
+After installation, you can run S3 Wayfinder from the command line. For example, to start the TUI, simply run:
 
 ```bash
-sherpa
+s3wf
 ```
 
 To use the CLI, you can run commands like:
 
 ```bash
-sherpa ls
-sherpa cp source destination
-sherpa rm object
+s3wf ls
+s3wf cp source destination
+s3wf rm object
 ```
 
 ## 📚 Documentation
 
-You can find all information related to this project and how to use it on the [Codeberg wiki](https://codeberg.org/raphael-denni/sherpa-s3/wiki).
+You can find all information related to this project and how to use it on the [Codeberg wiki](https://codeberg.org/raphael-denni/s3-wayfinder/wiki).
 
 ## 📜 License
 

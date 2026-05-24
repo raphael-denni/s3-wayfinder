@@ -2006,6 +2006,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
+name = "s3-wayfinder"
+version = "0.1.0"
+dependencies = [
+ "aws-sdk-s3",
+ "clap",
+ "crossterm 0.29.0",
+ "dirs",
+ "ratatui",
+ "serde",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "schannel"
 version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2141,22 +2157,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
-]
-
-[[package]]
-name = "sherpa-s3"
-version = "0.1.0"
-dependencies = [
- "aws-sdk-s3",
- "clap",
- "crossterm 0.29.0",
- "dirs",
- "ratatui",
- "serde",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! # Configuration management for sherpa-s3.
+//! # Configuration management for s3-wayfinder.
 //! This module handles loading, saving, and managing the configuration
 //! file that contains S3 credentials and settings.
 //!
 //! The configuration file is stored in the user's configuration directory
-//! under a subdirectory named `sherpa-s3`.
+//! under a subdirectory named `s3-wayfinder`.
 
 use aws_sdk_s3::{config::Credentials, config::Region};
 use serde::{Deserialize, Serialize};
@@ -38,7 +38,7 @@ pub struct Config {
 // Returns a PathBuf to the configuration file.
 fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let config_dir = dirs::config_dir().ok_or("Could not find config directory")?;
-    let app_config_dir = config_dir.join("sherpa-s3");
+    let app_config_dir = config_dir.join("s3-wayfinder");
 
     fs::create_dir_all(&app_config_dir)?;
 

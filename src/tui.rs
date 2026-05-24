@@ -110,7 +110,9 @@ async fn run_app<B: Backend>(
                 ])
                 .split(frame.area());
 
-            let title_block = Block::default().borders(Borders::ALL).title(" Sherpa S3 ");
+            let title_block = Block::default()
+                .borders(Borders::ALL)
+                .title(" S3 Wayfinder ");
             //let main_block = Block::default().borders(Borders::ALL).title(" Content ");
             let status_block = Block::default().borders(Borders::ALL).title(" Status ");
             let status_paragraph = Paragraph::new(app.status.as_str()).block(status_block);

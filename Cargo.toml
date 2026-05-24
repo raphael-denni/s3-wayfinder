@@ -1,11 +1,11 @@
 [package]
-name = "sherpa-s3"
+name = "s3-wayfinder"
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [[bin]]
-name = "sherpa"
+name = "s3wf"
 path = "src/main.rs"
 
 [dependencies]

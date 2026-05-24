@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! # Cp Command for sherpa-s3 CLI.
-//! This module implements the 'cp' command for the sherpa-s3 CLI application.
+//! # Cp Command for s3-wayfinder CLI.
+//! This module implements the 'cp' command for the s3-wayfinder CLI application.
 
 use aws_sdk_s3::{Client, primitives::ByteStream};
 use tokio::fs::File;

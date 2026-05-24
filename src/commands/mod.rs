@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! # Command definitions for sherpa-s3 CLI.
+//! # Command definitions for s3-wayfinder CLI.
 //! This module defines the command-line interface (CLI) commands
-//! for the sherpa-s3 application using the `clap` crate.
+//! for the s3-wayfinder application using the `clap` crate.
 //! It includes commands for listing, copying, and removing S3 objects.
 
 use clap::Parser;
@@ -11,7 +11,7 @@ pub mod cp;
 pub mod ls;
 pub mod rm;
 
-/// # CLI Commands for sherpa-s3
+/// # CLI Commands for s3-wayfinder
 ///
 /// # Commands
 /// - `ls [bucket]`: List objects in a bucket or list all buckets if no bucket is specified.
@@ -39,12 +39,12 @@ pub enum Commands {
         /// The object key (optional)
         s3_object: Option<String>,
     },
-    /// Launch the interactive TUI for sherpa-s3
+    /// Launch the interactive TUI for s3-wayfinder
     Tui,
 }
 
-/// # Command Line Interface for sherpa-s3
-/// This struct defines the CLI for sherpa-s3 using clap.
+/// # Command Line Interface for s3-wayfinder
+/// This struct defines the CLI for s3-wayfinder using clap.
 /// It includes subcommands for listing, copying, and removing S3 objects.
 ///
 /// # Fields

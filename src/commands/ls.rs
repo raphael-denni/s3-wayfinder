@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! # Ls Command for sherpa-s3 CLI.
-//! This module implements the 'ls' command for the sherpa-s3 CLI application.
+//! # Ls Command for s3-wayfinder CLI.
+//! This module implements the 'ls' command for the s3-wayfinder CLI application.
 
 use aws_sdk_s3::Client;
 

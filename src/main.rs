@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! # sherpa-s3 CLI Application
-//! This is the main entry point for the sherpa-s3 CLI application.
+//! # s3-wayfinder CLI Application
+//! This is the main entry point for the s3-wayfinder CLI application.
 //! It initializes the AWS S3 client, handles configuration,
 //! and dispatches commands based on user input.
 
@@ -13,7 +13,7 @@ mod commands;
 mod config;
 mod tui;
 
-// The main entry point for the sherpa-s3 CLI application.
+// The main entry point for the s3-wayfinder CLI application.
 #[tokio::main]
 async fn main() {
     #[cfg(debug_assertions)]
