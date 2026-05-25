@@ -3,6 +3,8 @@ name = "s3-wayfinder"
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
+description = "A TUI for navigating S3 buckets"
+repository = "https://codeberg.org/raphael-denni/s3-wayfinder"
 
 [[bin]]
 name = "s3wf"

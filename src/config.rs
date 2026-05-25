@@ -103,7 +103,7 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config, Box<dyn std::error::Error>>
                     save_err
                 );
 
-                return Err(save_err.into());
+                return Err(save_err);
             }
 
             println!("Default configuration file created at the standard location.");
