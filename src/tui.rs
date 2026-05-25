@@ -31,6 +31,11 @@ struct App {
     view: View,
 }
 
+struct CurrentSelection {
+    bucket: Option<String>,
+    object: Option<String>,
+}
+
 /// # TUI Application Entry Point
 /// This function initializes and runs the terminal user interface (TUI)
 ///
@@ -99,6 +104,11 @@ async fn main_loop<B: Backend>(
     app: &mut App,
     client: &Client,
 ) -> io::Result<()> {
+    let mut current_selection: CurrentSelection = CurrentSelection {
+        bucket: None,
+        object: None,
+    };
+
     loop {
         terminal_instance.draw(|frame| {
             let chunks = Layout::default()
@@ -238,6 +248,180 @@ async fn main_loop<B: Backend>(
                                         Some(0)
                                     });
                                     app.status = "Connected to S3".to_string();
+                                }
+
+                                Err(e) => app.status = format!("Error: {}", e),
+                            }
+                        }
+                    }
+
+                    event::KeyCode::Char('r') => {
+                        if let View::Objects { bucket } = &app.view {
+                            app.status = format!("Refreshing objects in bucket {}...", bucket);
+
+                            match crate::commands::ls::list_objects(client, bucket).await {
+                                Ok(objects) => {
+                                    app.items = objects;
+                                    app.state.select(if app.items.is_empty() {
+                                        None
+                                    } else {
+                                        Some(0)
+                                    });
+                                    app.status = format!("Viewing bucket: {}", bucket);
+                                }
+
+                                Err(e) => app.status = format!("Error: {}", e),
+                            }
+                        }
+
+                        if let View::Buckets = &app.view {
+                            app.status = "Refreshing buckets...".to_string();
+
+                            match crate::commands::ls::list_buckets(client).await {
+                                Ok(buckets) => {
+                                    app.items = buckets;
+                                    app.state.select(if app.items.is_empty() {
+                                        None
+                                    } else {
+                                        Some(0)
+                                    });
+                                    app.status = "Connected to S3".to_string();
+                                }
+
+                                Err(e) => app.status = format!("Error: {}", e),
+                            }
+                        }
+                    }
+
+                    event::KeyCode::Char('c') => {
+                        if let View::Objects { bucket } = &app.view {
+                            let object_key = match app.state.selected() {
+                                Some(i) => app.items[i].clone(),
+                                None => continue,
+                            };
+
+                            current_selection = CurrentSelection {
+                                bucket: Some(bucket.clone()),
+                                object: Some(object_key.clone()),
+                            };
+                        }
+                    }
+
+                    event::KeyCode::Char('p') => {
+                        if let Some(src_object) = &current_selection.object {
+                            if let View::Objects {
+                                bucket: dest_bucket,
+                            } = &app.view
+                            {
+                                let src_bucket = current_selection.bucket.as_ref().unwrap();
+
+                                app.status = format!(
+                                    "Copying object {} from bucket {}...",
+                                    src_object, src_bucket
+                                );
+
+                                // For demonstration, we'll just copy the object to a new key with "_copy" suffix
+                                let dest_key = format!("{}_copy", src_object);
+
+                                match crate::commands::cp::copy_object(
+                                    client,
+                                    src_bucket,
+                                    src_object,
+                                    dest_bucket,
+                                    &dest_key,
+                                )
+                                .await
+                                {
+                                    Ok(_) => {
+                                        app.status = format!(
+                                            "Copied object {} to {} in bucket {}",
+                                            src_object, dest_key, dest_bucket
+                                        );
+
+                                        // Refresh the object list
+                                        match crate::commands::ls::list_objects(client, dest_bucket)
+                                            .await
+                                        {
+                                            Ok(objects) => {
+                                                app.items = objects;
+                                                app.state.select(if app.items.is_empty() {
+                                                    None
+                                                } else {
+                                                    Some(0)
+                                                });
+                                            }
+
+                                            Err(e) => app.status = format!("Error: {}", e),
+                                        }
+                                    }
+
+                                    Err(e) => app.status = format!("Error: {}", e),
+                                }
+                            }
+                        }
+                    }
+
+                    event::KeyCode::Delete | event::KeyCode::Char('d') => {
+                        if let View::Objects { bucket } = &app.view {
+                            let object_key = match app.state.selected() {
+                                Some(i) => app.items[i].clone(),
+                                None => continue,
+                            };
+
+                            app.status =
+                                format!("Deleting object {} from bucket {}...", object_key, bucket);
+
+                            match crate::commands::rm::delete_object(client, bucket, &object_key)
+                                .await
+                            {
+                                Ok(_) => {
+                                    app.status = format!(
+                                        "Deleted object {} from bucket {}",
+                                        object_key, bucket
+                                    );
+
+                                    match crate::commands::ls::list_objects(client, bucket).await {
+                                        Ok(objects) => {
+                                            app.items = objects;
+                                            app.state.select(if app.items.is_empty() {
+                                                None
+                                            } else {
+                                                Some(0)
+                                            });
+                                        }
+
+                                        Err(e) => app.status = format!("Error: {}", e),
+                                    }
+                                }
+
+                                Err(e) => app.status = format!("Error: {}", e),
+                            }
+                        }
+
+                        if let View::Buckets = &app.view {
+                            let bucket_name = match app.state.selected() {
+                                Some(i) => app.items[i].clone(),
+                                None => continue,
+                            };
+
+                            app.status = format!("Deleting bucket {}...", bucket_name);
+
+                            match crate::commands::rm::delete_bucket(client, &bucket_name).await {
+                                Ok(_) => {
+                                    app.status = format!("Deleted bucket {}", bucket_name);
+
+                                    match crate::commands::ls::list_buckets(client).await {
+                                        Ok(buckets) => {
+                                            app.items = buckets;
+                                            app.state.select(if app.items.is_empty() {
+                                                None
+                                            } else {
+                                                Some(0)
+                                            });
+                                        }
+
+                                        Err(e) => app.status = format!("Error: {}", e),
+                                    }
                                 }
 
                                 Err(e) => app.status = format!("Error: {}", e),

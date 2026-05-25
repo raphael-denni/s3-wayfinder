@@ -32,7 +32,7 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 - [X] Panes for buckets, objects, etc.
 - [X] Status bar
 - [X] Conditional launch
-- [ ] Connect S3 logics
+- [X] Connect S3 logics
 
 ### Phase 3: Advanced features
 - [ ] Configure Forgejo actions in Codeberg for package distribution
@@ -42,6 +42,7 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 - [ ] Add 'mv' command for moving/renaming objects/buckets
 - [ ] Integrate 'mk' and 'mv' into the TUI
 - [ ] Nesting of buckets and folders
+- [ ] Transfer acceleration and parallelism for faster uploads/downloads
 
 ### Sides
 - The wiki will be completed along the project
@@ -51,7 +52,7 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 ## 📦 Installation
 
 ### From precompiled binaries
-You can install S3 Wayfinder by downloading the precompiled binaries from the [Releases](https://codeberg.org/raphael-denni/s3-wayfinder/releases) page on Codeberg. Choose the appropriate binary for your operating system and architecture.
+You can install S3 Wayfinder by downloading the precompiled binaries from the [Releases](https://codeberg.org/raphael-denni/s3-wayfinder/releases) page on Codeberg. Choose the appropriate binary for your operating system and architecture. (No binaries for macOS, I don't have a Mac to build them, sorry!)
 
 ### From source
 To build S3 Wayfinder from source, you need to have Rust and Cargo installed on your system. You can then clone the repository and build the project using the following commands:
