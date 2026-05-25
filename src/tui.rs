@@ -42,7 +42,7 @@ struct App {
 ///
 /// # Errors
 /// This function may return an error if terminal initialization or TUI execution fails.
-pub async fn run(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_tui(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
 
     let mut stdout = io::stdout();
@@ -72,7 +72,7 @@ pub async fn run(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
         app.state.select(Some(0));
     }
 
-    let app_result = run_app(&mut terminal_instance, &mut app, client).await;
+    let app_result = main_loop(&mut terminal_instance, &mut app, client).await;
 
     terminal::disable_raw_mode()?;
 
@@ -94,7 +94,7 @@ pub async fn run(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
 
 // The main application loop for the TUI.
 // It handles rendering and user input.
-async fn run_app<B: Backend>(
+async fn main_loop<B: Backend>(
     terminal_instance: &mut Terminal<B>,
     app: &mut App,
     client: &Client,
@@ -110,10 +110,16 @@ async fn run_app<B: Backend>(
                 ])
                 .split(frame.area());
 
+            let current_endpoint = match &app.view {
+                View::Buckets => "/".to_string(),
+                View::Objects { bucket } => format!("/{}", bucket),
+            };
+
             let title_block = Block::default()
                 .borders(Borders::ALL)
                 .title(" S3 Wayfinder ");
-            //let main_block = Block::default().borders(Borders::ALL).title(" Content ");
+            let title_paragraph = Paragraph::new(current_endpoint).block(title_block);
+
             let status_block = Block::default().borders(Borders::ALL).title(" Status ");
             let status_paragraph = Paragraph::new(app.status.as_str()).block(status_block);
 
@@ -137,7 +143,7 @@ async fn run_app<B: Backend>(
                         .fg(ratatui::style::Color::Yellow),
                 );
 
-            frame.render_widget(title_block, chunks[0]);
+            frame.render_widget(title_paragraph, chunks[0]);
             frame.render_stateful_widget(list, chunks[1], &mut app.state);
             frame.render_widget(status_paragraph, chunks[2]);
         })?;

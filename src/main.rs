@@ -62,10 +62,10 @@ async fn main() {
         }
 
         Some(commands::Commands::Tui) | None => {
-            info!("'tui' interface called");
+            info!("'tui' started");
 
-            if let Err(e) = tui::run(&client).await {
-                eprintln!("Error executing the TUI: {}", e);
+            if let Err(e) = tui::run_tui(&client).await {
+                eprintln!("Error running TUI: {}", e);
                 std::process::exit(1);
             }
         }
