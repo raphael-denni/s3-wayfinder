@@ -4,11 +4,16 @@
 //! This module implements the 'ls' command for the s3-wayfinder CLI application.
 
 use aws_sdk_s3::Client;
+use aws_sdk_s3::error::DisplayErrorContext;
 
 /// # List S3 Buckets
 /// Returns a list of bucket names
 pub async fn list_buckets(client: &Client) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let output = client.list_buckets().send().await?;
+    let output = client
+        .list_buckets()
+        .send()
+        .await
+        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
 
     let buckets = output
         .buckets
@@ -26,7 +31,12 @@ pub async fn list_objects(
     client: &Client,
     bucket: &str,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let output = client.list_objects_v2().bucket(bucket).send().await?;
+    let output = client
+        .list_objects_v2()
+        .bucket(bucket)
+        .send()
+        .await
+        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
 
     let objects = output
         .contents

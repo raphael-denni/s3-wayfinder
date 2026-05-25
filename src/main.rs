@@ -19,7 +19,13 @@ async fn main() {
     #[cfg(debug_assertions)]
     tracing_subscriber::fmt::init();
 
-    let s3_config = config::handle_config().unwrap();
+    let s3_config = match config::handle_config() {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("Error loading configuration: {}", e);
+            std::process::exit(1);
+        }
+    };
     let client = Client::from_conf(s3_config);
 
     let cli = commands::Cli::parse();

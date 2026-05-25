@@ -3,7 +3,7 @@
 //! # Rm Command for s3-wayfinder CLI.
 //! This module implements the 'rm' command for the s3-wayfinder CLI application.
 
-use aws_sdk_s3::Client;
+use aws_sdk_s3::{Client, error::DisplayErrorContext};
 use std::io::{self, Write};
 
 /// # Delete S3 Object
@@ -18,7 +18,8 @@ pub async fn delete_object(
         .bucket(bucket)
         .key(key)
         .send()
-        .await?;
+        .await
+        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
 
     Ok(())
 }
@@ -29,7 +30,12 @@ pub async fn delete_bucket(
     client: &Client,
     bucket: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    client.delete_bucket().bucket(bucket).send().await?;
+    client
+        .delete_bucket()
+        .bucket(bucket)
+        .send()
+        .await
+        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
 
     Ok(())
 }

@@ -3,7 +3,7 @@
 //! # Cp Command for s3-wayfinder CLI.
 //! This module implements the 'cp' command for the s3-wayfinder CLI application.
 
-use aws_sdk_s3::{Client, primitives::ByteStream};
+use aws_sdk_s3::{Client, error::DisplayErrorContext, primitives::ByteStream};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -40,7 +40,8 @@ pub async fn copy_object(
         .bucket(dest_bucket)
         .key(dest_key)
         .send()
-        .await?;
+        .await
+        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
     Ok(())
 }
 
@@ -64,7 +65,8 @@ pub async fn upload_object(
         .key(dest_key)
         .body(body)
         .send()
-        .await?;
+        .await
+        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
 
     Ok(())
 }
@@ -81,11 +83,17 @@ pub async fn download_object(
         .bucket(source_bucket)
         .key(source_key)
         .send()
-        .await?;
+        .await
+        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
 
     let mut file = File::create(local_path).await?;
 
-    while let Some(bytes) = output.body.try_next().await? {
+    while let Some(bytes) = output
+        .body
+        .try_next()
+        .await
+        .map_err(|e| format!("{}", DisplayErrorContext(e)))?
+    {
         file.write_all(&bytes).await?;
     }
 

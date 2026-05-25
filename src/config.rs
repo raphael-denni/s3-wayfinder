@@ -140,7 +140,16 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config, Box<dyn std::error::Error>>
         .region(region);
 
     if let Some(endpoint_url) = &config.endpoint_url {
-        s3_config_builder = s3_config_builder.endpoint_url(endpoint_url);
+        let formatted_url =
+            if endpoint_url.starts_with("http://") || endpoint_url.starts_with("https://") {
+                endpoint_url.clone()
+            } else {
+                format!("http://{}", endpoint_url)
+            };
+
+        s3_config_builder = s3_config_builder
+            .endpoint_url(formatted_url)
+            .force_path_style(true);
     }
 
     let s3_config = s3_config_builder.build();
