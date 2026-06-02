@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    name: Build Release (Linux x64)
+    runs-on: codeberg-small-lazy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+          echo "$HOME/.cargo/bin" >> $FORGEJO_PATH
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config zip
+
+      - name: Build Release
+        run: cargo build --verbose --release
+
+      - name: Package (Linux)
+        run: |
+          VERSION=${{ forgejo.ref_name }}
+          VERSION=${VERSION#v}
+          mkdir -p dist
+          cp target/release/s3wf dist/s3wf
+          cd dist && zip ../s3wf-${VERSION}-linux-x64.zip s3wf
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: s3wf-linux-x64
+          path: s3wf-*-linux-x64.zip
+
+  build-windows:
+    name: Build Release (Windows x64)
+    runs-on: codeberg-small-lazy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal --target x86_64-pc-windows-gnu
+          echo "$HOME/.cargo/bin" >> $FORGEJO_PATH
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y mingw-w64 zip
+
+      - name: Build Release (Windows)
+        run: cargo build --verbose --release --target x86_64-pc-windows-gnu
+
+      - name: Package (Windows)
+        run: |
+          VERSION=${{ forgejo.ref_name }}
+          VERSION=${VERSION#v}
+          mkdir -p dist
+          cp target/x86_64-pc-windows-gnu/release/s3wf.exe dist/s3wf.exe
+          cd dist && zip ../s3wf-${VERSION}-windows-x64.zip s3wf.exe
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: s3wf-windows-x64
+          path: s3wf-*-windows-x64.zip
+
+  publish:
+    name: Publish Release
+    needs: [build-linux, build-windows]
+    runs-on: codeberg-small-lazy
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: assets
+
+      - name: Create Release
+        uses: forgejo/forgejo-release@v1
+        with:
+          direction: upload
+          files: assets/*.zip
+          token: ${{ forgejo.token }}
+          generate_release_notes: true
+          draft: true
