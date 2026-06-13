@@ -5,7 +5,7 @@
 
 use aws_sdk_s3::{Client, error::DisplayErrorContext, primitives::ByteStream};
 use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncWriteExt, BufWriter};
 
 // Parses an S3 path in the format "s3://bucket/key" into a tuple of (bucket, key).
 // Returns an error if the path is not valid.
@@ -83,7 +83,8 @@ pub async fn download_object(
         .await
         .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
 
-    let mut file = File::create(local_path).await?;
+    let file = File::create(local_path).await?;
+    let mut writer = BufWriter::new(file);
 
     while let Some(bytes) = output
         .body
@@ -91,8 +92,10 @@ pub async fn download_object(
         .await
         .map_err(|e| format!("{}", DisplayErrorContext(e)))?
     {
-        file.write_all(&bytes).await?;
+        writer.write_all(&bytes).await?;
     }
+
+    writer.flush().await?;
 
     Ok(())
 }
