@@ -53,7 +53,7 @@ pub async fn delete_bucket(
 pub async fn run_rm(
     client: &Client,
     bucket: &str,
-    s3_object: Option<String>,
+    s3_object: &Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(object_key) = s3_object {
         println!(

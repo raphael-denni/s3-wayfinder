@@ -208,16 +208,16 @@ async fn main_loop<B: Backend>(
 
                                 match crate::commands::ls::list_objects(client, &selected).await {
                                     Ok(objects) => {
+                                        app.status = format!("Viewing bucket: {}", selected);
+
                                         app.items = objects;
-                                        app.view = View::Objects {
-                                            bucket: selected.clone(),
-                                        };
                                         app.state.select(if app.items.is_empty() {
                                             None
                                         } else {
                                             Some(0)
                                         });
-                                        app.status = format!("Viewing bucket: {}", selected);
+
+                                        app.view = View::Objects { bucket: selected };
                                     }
 
                                     Err(e) => app.status = format!("Error: {}", e),
@@ -284,7 +284,7 @@ async fn main_loop<B: Backend>(
                 event::KeyCode::Char('c') => {
                     if let View::Objects { bucket } = &app.view {
                         let object_key = match app.state.selected() {
-                            Some(i) => app.items[i].clone(),
+                            Some(i) => &app.items[i],
                             None => continue,
                         };
 
@@ -349,7 +349,7 @@ async fn main_loop<B: Backend>(
                 event::KeyCode::Delete | event::KeyCode::Char('d') => {
                     if let View::Objects { bucket } = &app.view {
                         let object_key = match app.state.selected() {
-                            Some(i) => app.items[i].clone(),
+                            Some(i) => &app.items[i],
                             None => continue,
                         };
 
@@ -382,7 +382,7 @@ async fn main_loop<B: Backend>(
 
                     if let View::Buckets = &app.view {
                         let bucket_name = match app.state.selected() {
-                            Some(i) => app.items[i].clone(),
+                            Some(i) => &app.items[i],
                             None => continue,
                         };
 

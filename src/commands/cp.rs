@@ -52,12 +52,9 @@ pub async fn upload_object(
     dest_bucket: &str,
     dest_key: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut file: File = File::open(local_path).await?;
-    let mut contents = Vec::new();
-
-    file.read_to_end(&mut contents).await?;
-
-    let body = ByteStream::from(contents);
+    let body = ByteStream::from_path(local_path)
+        .await
+        .map_err(|e| format!("Failed to read file {}: {}", local_path, e))?;
 
     client
         .put_object()

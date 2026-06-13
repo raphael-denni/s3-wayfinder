@@ -35,13 +35,15 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 - [X] Connect S3 logics
 
 ### Phase 3: Advanced features
-- [ ] Configure Forgejo actions in Codeberg for package distribution
-- [ ] Complete the wiki for documentation
+- [X] Configure Forgejo actions in Codeberg for package distribution
 - [ ] Multi-profiles configuration with default
 - [ ] Add 'mk' command for bucket and folder creation
 - [ ] Add 'mv' command for moving/renaming objects/buckets
 - [ ] Integrate 'mk' and 'mv' into the TUI
 - [ ] Nesting of buckets and folders
+
+### Phase ?
+- [ ] Complete the wiki for documentation
 - [ ] Transfer acceleration and parallelism for faster uploads/downloads
 
 ### Sides

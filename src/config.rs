@@ -10,6 +10,7 @@
 use aws_sdk_s3::{config::Credentials, config::Region};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use tracing::info;
 
@@ -37,23 +38,18 @@ pub struct Config {
 // Determines the platform-specific configuration file path and ensures the directory exists.
 // Returns a PathBuf to the configuration file.
 fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let config_dir = dirs::config_dir().ok_or("Could not find config directory")?;
-    let app_config_dir = config_dir.join("s3-wayfinder");
+    let mut path = dirs::config_dir().ok_or("Could not find config directory")?;
 
-    fs::create_dir_all(&app_config_dir)?;
+    path.push("s3-wayfinder");
+    path.push("config.toml");
 
-    Ok(app_config_dir.join("config.toml"))
+    Ok(path)
 }
 
 // Read and deserialize the TOML configuration file into a Config struct.
 // Return an error if the file does not exist or cannot be read/parsed.
 fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
     let config_path = get_config_path()?;
-
-    if !config_path.exists() {
-        return Err("Configuration file does not exist. Please create one".into());
-    }
-
     let content = fs::read_to_string(&config_path)?;
     let config: Config = toml::from_str(&content)?;
 
@@ -64,8 +60,12 @@ fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
 // Returns an error if the file cannot be written.
 fn save_config(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     let config_path = get_config_path()?;
-    let content = toml::to_string_pretty(config)?;
 
+    if let Some(parent) = config_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let content = toml::to_string_pretty(config)?;
     fs::write(&config_path, content)?;
 
     Ok(())
@@ -87,7 +87,10 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config, Box<dyn std::error::Error>>
             config
         }
 
-        Err(e) if e.to_string().contains("does not exist") => {
+        Err(e)
+            if e.downcast_ref::<std::io::Error>()
+                .map_or(false, |io| io.kind() == ErrorKind::NotFound) =>
+        {
             info!("No configuration file found. Creating a default one.");
 
             let new_config = Config {
@@ -125,31 +128,28 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config, Box<dyn std::error::Error>>
 
     info!("Current configuration: {:?}", config);
 
-    let credentials = Credentials::new(
-        &config.access_key_id,
-        &config.secret_access_key,
-        None,
-        None,
-        "Static",
-    );
+    let Config {
+        access_key_id,
+        secret_access_key,
+        region,
+        endpoint_url,
+    } = config;
 
-    let region = Region::new(config.region.clone());
+    let credentials = Credentials::new(access_key_id, secret_access_key, None, None, "Static");
+    let region = Region::new(region);
 
     let mut s3_config_builder = aws_sdk_s3::Config::builder()
         .credentials_provider(credentials)
         .region(region);
 
-    if let Some(endpoint_url) = &config.endpoint_url {
-        let formatted_url =
-            if endpoint_url.starts_with("http://") || endpoint_url.starts_with("https://") {
-                endpoint_url.clone()
-            } else {
-                format!("http://{}", endpoint_url)
-            };
+    if let Some(url) = endpoint_url {
+        let url = if url.starts_with("http") {
+            url
+        } else {
+            format!("https://{}", url)
+        };
 
-        s3_config_builder = s3_config_builder
-            .endpoint_url(formatted_url)
-            .force_path_style(true);
+        s3_config_builder = s3_config_builder.endpoint_url(url).force_path_style(true);
     }
 
     let s3_config = s3_config_builder.build();

@@ -34,7 +34,7 @@ async fn main() {
         Some(commands::Commands::Ls { bucket }) => {
             info!("'ls' command called");
 
-            if let Err(e) = commands::ls::run_ls(&client, bucket.clone()).await {
+            if let Err(e) = commands::ls::run_ls(&client, bucket).await {
                 eprintln!("Error executing ls command: {}", e);
                 std::process::exit(1);
             }
@@ -55,7 +55,7 @@ async fn main() {
         Some(commands::Commands::Rm { bucket, s3_object }) => {
             info!("'rm' command called");
 
-            if let Err(e) = commands::rm::run_rm(&client, bucket, s3_object.clone()).await {
+            if let Err(e) = commands::rm::run_rm(&client, bucket, s3_object).await {
                 eprintln!("Error executing rm command: {}", e);
                 std::process::exit(1);
             }

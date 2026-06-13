@@ -59,7 +59,7 @@ pub async fn list_objects(
 /// Returns an error if there are issues listing buckets or objects.
 pub async fn run_ls(
     client: &Client,
-    bucket: Option<String>,
+    bucket: &Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match bucket {
         Some(bucket_name) => {
