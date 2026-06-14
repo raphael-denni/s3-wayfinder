@@ -10,6 +10,7 @@
 
 use std::io;
 
+use anyhow::{Context, Result};
 use aws_sdk_s3::Client;
 use crossterm::{event, execute, terminal};
 use ratatui::{
@@ -47,8 +48,8 @@ struct CurrentSelection {
 ///
 /// # Errors
 /// This function may return an error if terminal initialization or TUI execution fails.
-pub async fn run_tui(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    terminal::enable_raw_mode()?;
+pub async fn run_tui(client: &Client) -> Result<()> {
+    terminal::enable_raw_mode().context("Failed to enable raw mode")?;
 
     let mut stdout = io::stdout();
 
@@ -56,14 +57,16 @@ pub async fn run_tui(client: &Client) -> Result<(), Box<dyn std::error::Error>> 
         stdout,
         terminal::EnterAlternateScreen,
         event::EnableMouseCapture
-    )?;
+    )
+    .context("Failed to enter alternate screen")?;
 
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal_instance = Terminal::new(backend).unwrap();
+    let mut terminal_instance =
+        Terminal::new(backend).context("Failed to create terminal instance")?;
 
     let (items, status) = match crate::commands::ls::list_buckets(client).await {
         Ok(buckets) => (buckets, "Connected to S3".to_string()),
-        Err(e) => (Vec::new(), format!("Error: {}", e)),
+        Err(e) => (Vec::new(), format!("Error: {:#}", e)),
     };
 
     let mut app = App {
@@ -79,19 +82,21 @@ pub async fn run_tui(client: &Client) -> Result<(), Box<dyn std::error::Error>> 
 
     let app_result = main_loop(&mut terminal_instance, &mut app, client).await;
 
-    terminal::disable_raw_mode()?;
+    terminal::disable_raw_mode().context("Failed to disable raw mode")?;
 
     execute!(
         terminal_instance.backend_mut(),
         terminal::LeaveAlternateScreen,
         event::DisableMouseCapture
-    )?;
+    )
+    .context("Failed to leave alternate screen")?;
 
-    terminal_instance.show_cursor()?;
+    terminal_instance
+        .show_cursor()
+        .context("Failed to show cursor")?;
 
     if let Err(e) = app_result {
-        eprintln!("Error in app: {:?}", e);
-        return Err(Box::new(e));
+        return Err(anyhow::anyhow!(e)).context("Error in TUI main loop");
     }
 
     Ok(())
@@ -220,7 +225,7 @@ async fn main_loop<B: Backend>(
                                         app.view = View::Objects { bucket: selected };
                                     }
 
-                                    Err(e) => app.status = format!("Error: {}", e),
+                                    Err(e) => app.status = format!("Error: {:#}", e),
                                 }
                             }
 
@@ -244,7 +249,7 @@ async fn main_loop<B: Backend>(
                                 app.status = "Connected to S3".to_string();
                             }
 
-                            Err(e) => app.status = format!("Error: {}", e),
+                            Err(e) => app.status = format!("Error: {:#}", e),
                         }
                     }
                 }
@@ -261,7 +266,7 @@ async fn main_loop<B: Backend>(
                                 app.status = format!("Viewing bucket: {}", bucket);
                             }
 
-                            Err(e) => app.status = format!("Error: {}", e),
+                            Err(e) => app.status = format!("Error: {:#}", e),
                         }
                     }
 
@@ -276,7 +281,7 @@ async fn main_loop<B: Backend>(
                                 app.status = "Connected to S3".to_string();
                             }
 
-                            Err(e) => app.status = format!("Error: {}", e),
+                            Err(e) => app.status = format!("Error: {:#}", e),
                         }
                     }
                 }
@@ -337,11 +342,11 @@ async fn main_loop<B: Backend>(
                                         });
                                     }
 
-                                    Err(e) => app.status = format!("Error: {}", e),
+                                    Err(e) => app.status = format!("Error: {:#}", e),
                                 }
                             }
 
-                            Err(e) => app.status = format!("Error: {}", e),
+                            Err(e) => app.status = format!("Error: {:#}", e),
                         }
                     }
                 }
@@ -372,11 +377,11 @@ async fn main_loop<B: Backend>(
                                         });
                                     }
 
-                                    Err(e) => app.status = format!("Error: {}", e),
+                                    Err(e) => app.status = format!("Error: {:#}", e),
                                 }
                             }
 
-                            Err(e) => app.status = format!("Error: {}", e),
+                            Err(e) => app.status = format!("Error: {:#}", e),
                         }
                     }
 
@@ -402,11 +407,11 @@ async fn main_loop<B: Backend>(
                                         });
                                     }
 
-                                    Err(e) => app.status = format!("Error: {}", e),
+                                    Err(e) => app.status = format!("Error: {:#}", e),
                                 }
                             }
 
-                            Err(e) => app.status = format!("Error: {}", e),
+                            Err(e) => app.status = format!("Error: {:#}", e),
                         }
                     }
                 }

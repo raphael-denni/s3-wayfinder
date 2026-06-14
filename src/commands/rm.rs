@@ -3,39 +3,33 @@
 //! # Rm Command for s3-wayfinder CLI.
 //! This module implements the 'rm' command for the s3-wayfinder CLI application.
 
-use aws_sdk_s3::{Client, error::DisplayErrorContext};
+use anyhow::{Context, Result};
+use aws_sdk_s3::Client;
 use std::io::{self, Write};
 
 /// # Delete S3 Object
 /// Deletes an object from the specified bucket.
-pub async fn delete_object(
-    client: &Client,
-    bucket: &str,
-    key: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn delete_object(client: &Client, bucket: &str, key: &str) -> Result<()> {
     client
         .delete_object()
         .bucket(bucket)
         .key(key)
         .send()
         .await
-        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
+        .with_context(|| format!("Failed to delete object '{}' from bucket '{}'", key, bucket))?;
 
     Ok(())
 }
 
 /// # Delete S3 Bucket
 /// Deletes an empty S3 bucket
-pub async fn delete_bucket(
-    client: &Client,
-    bucket: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn delete_bucket(client: &Client, bucket: &str) -> Result<()> {
     client
         .delete_bucket()
         .bucket(bucket)
         .send()
         .await
-        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
+        .with_context(|| format!("Failed to delete bucket '{}'", bucket))?;
 
     Ok(())
 }
@@ -50,11 +44,7 @@ pub async fn delete_bucket(
 ///
 /// # Errors
 /// Returns an error if there are issues during the deletion operation.
-pub async fn run_rm(
-    client: &Client,
-    bucket: &str,
-    s3_object: &Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_rm(client: &Client, bucket: &str, s3_object: &Option<String>) -> Result<()> {
     if let Some(object_key) = s3_object {
         println!(
             "Deleting object '{}' from bucket '{}'...",
@@ -70,10 +60,12 @@ pub async fn run_rm(
             bucket
         );
 
-        io::stdout().flush()?;
+        io::stdout().flush().context("Failed to flush stdout")?;
 
         let mut confirmation = String::new();
-        io::stdin().read_line(&mut confirmation)?;
+        io::stdin()
+            .read_line(&mut confirmation)
+            .context("Failed to read from stdin")?;
 
         if confirmation.trim().eq_ignore_ascii_case("y") {
             println!("Deleting bucket '{}'...", bucket);

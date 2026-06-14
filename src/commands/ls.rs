@@ -3,17 +3,17 @@
 //! # Ls Command for s3-wayfinder CLI.
 //! This module implements the 'ls' command for the s3-wayfinder CLI application.
 
+use anyhow::{Context, Result};
 use aws_sdk_s3::Client;
-use aws_sdk_s3::error::DisplayErrorContext;
 
 /// # List S3 Buckets
 /// Returns a list of bucket names
-pub async fn list_buckets(client: &Client) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+pub async fn list_buckets(client: &Client) -> Result<Vec<String>> {
     let output = client
         .list_buckets()
         .send()
         .await
-        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
+        .context("Failed to list S3 buckets")?;
 
     let buckets = output
         .buckets
@@ -27,16 +27,13 @@ pub async fn list_buckets(client: &Client) -> Result<Vec<String>, Box<dyn std::e
 
 /// # List S3 Objects
 /// Returns a list of object keys in the specified bucket.
-pub async fn list_objects(
-    client: &Client,
-    bucket: &str,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+pub async fn list_objects(client: &Client, bucket: &str) -> Result<Vec<String>> {
     let output = client
         .list_objects_v2()
         .bucket(bucket)
         .send()
         .await
-        .map_err(|e| format!("{}", DisplayErrorContext(e)))?;
+        .with_context(|| format!("Failed to list objects in bucket '{}'", bucket))?;
 
     let objects = output
         .contents
@@ -57,10 +54,7 @@ pub async fn list_objects(
 ///
 /// # Errors
 /// Returns an error if there are issues listing buckets or objects.
-pub async fn run_ls(
-    client: &Client,
-    bucket: &Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_ls(client: &Client, bucket: &Option<String>) -> Result<()> {
     match bucket {
         Some(bucket_name) => {
             println!("Listing objects in bucket: {}", bucket_name);

@@ -7,6 +7,7 @@
 //! The configuration file is stored in the user's configuration directory
 //! under a subdirectory named `s3-wayfinder`.
 
+use anyhow::{Context, Result};
 use aws_sdk_s3::{config::Credentials, config::Region};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -37,8 +38,8 @@ pub struct Config {
 
 // Determines the platform-specific configuration file path and ensures the directory exists.
 // Returns a PathBuf to the configuration file.
-fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let mut path = dirs::config_dir().ok_or("Could not find config directory")?;
+fn get_config_path() -> Result<PathBuf> {
+    let mut path = dirs::config_dir().context("Could not find config directory")?;
 
     path.push("s3-wayfinder");
     path.push("config.toml");
@@ -48,25 +49,29 @@ fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
 
 // Read and deserialize the TOML configuration file into a Config struct.
 // Return an error if the file does not exist or cannot be read/parsed.
-fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
+fn load_config() -> Result<Config> {
     let config_path = get_config_path()?;
-    let content = fs::read_to_string(&config_path)?;
-    let config: Config = toml::from_str(&content)?;
+    let content = fs::read_to_string(&config_path)
+        .with_context(|| format!("Failed to read config file at {:?}", config_path))?;
+    let config: Config = toml::from_str(&content)
+        .with_context(|| format!("Failed to parse config file at {:?}", config_path))?;
 
     Ok(config)
 }
 
 // Saves the Config struct to the TOML configuration file.
 // Returns an error if the file cannot be written.
-fn save_config(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+fn save_config(config: &Config) -> Result<()> {
     let config_path = get_config_path()?;
 
     if let Some(parent) = config_path.parent() {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create config directory at {:?}", parent))?;
     }
 
-    let content = toml::to_string_pretty(config)?;
-    fs::write(&config_path, content)?;
+    let content = toml::to_string_pretty(config).context("Failed to serialize configuration")?;
+    fs::write(&config_path, content)
+        .with_context(|| format!("Failed to write config file to {:?}", config_path))?;
 
     Ok(())
 }
@@ -80,49 +85,41 @@ fn save_config(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
 ///
 /// # Returns
 /// Ok(aws_sdk_s3::Config) - The configured AWS S3 configuration object.
-pub fn handle_config() -> Result<aws_sdk_s3::Config, Box<dyn std::error::Error>> {
+pub fn handle_config() -> Result<aws_sdk_s3::Config> {
     let config = match load_config() {
         Ok(config) => {
             info!("Successfully loaded configuration.");
             config
         }
 
-        Err(e)
-            if e.downcast_ref::<std::io::Error>()
-                .map_or(false, |io| io.kind() == ErrorKind::NotFound) =>
-        {
-            info!("No configuration file found. Creating a default one.");
-
-            let new_config = Config {
-                access_key_id: "YOUR_ACCESS_KEY_ID".to_string(),
-                secret_access_key: "YOUR_SECRET_ACCESS_KEY".to_string(),
-                region: "us-east-1".to_string(),
-                endpoint_url: None,
-            };
-
-            if let Err(save_err) = save_config(&new_config) {
-                eprintln!(
-                    "Fatal: Could not save the new configuration file: {}",
-                    save_err
-                );
-
-                return Err(save_err);
-            }
-
-            println!("Default configuration file created at the standard location.");
-            println!("Please edit it with your S3 credentials before proceeding.");
-
-            println!(
-                "For S3-compatible services, add and uncomment the `endpoint_url` key in your config file. For example:"
-            );
-            println!("# endpoint_url = \"s3.us-east-001.compatible-service.com\"");
-
-            new_config
-        }
-
         Err(e) => {
-            eprintln!("Fatal: Error loading configuration: {}", e);
-            return Err(e);
+            if e.downcast_ref::<std::io::Error>()
+                .map_or(false, |io| io.kind() == ErrorKind::NotFound)
+            {
+                info!("No configuration file found. Creating a default one.");
+
+                let new_config = Config {
+                    access_key_id: "YOUR_ACCESS_KEY_ID".to_string(),
+                    secret_access_key: "YOUR_SECRET_ACCESS_KEY".to_string(),
+                    region: "us-east-1".to_string(),
+                    endpoint_url: None,
+                };
+
+                save_config(&new_config)
+                    .context("Fatal: Could not save the new configuration file")?;
+
+                println!("Default configuration file created at the standard location.");
+                println!("Please edit it with your S3 credentials before proceeding.");
+
+                println!(
+                    "For S3-compatible services, add and uncomment the `endpoint_url` key in your config file. For example:"
+                );
+                println!("# endpoint_url = \"s3.us-east-001.compatible-service.com\"");
+
+                new_config
+            } else {
+                return Err(e).context("Fatal: Error loading configuration");
+            }
         }
     };
 

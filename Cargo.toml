@@ -11,6 +11,7 @@ name = "s3wf"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0.102"
 aws-sdk-s3 = { version = "1.118.0", features = ["behavior-version-latest"] }
 clap = { version = "4.5.53", features = ["derive"] }
 crossterm = "0.29.0"
