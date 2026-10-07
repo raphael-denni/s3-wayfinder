@@ -6,6 +6,7 @@
 use anyhow::{Context, Result};
 use aws_sdk_s3::Client;
 use std::io::{self, Write};
+use tracing::debug;
 
 /// # Delete S3 Object
 /// Deletes an object from the specified bucket.
@@ -46,16 +47,16 @@ pub async fn delete_bucket(client: &Client, bucket: &str) -> Result<()> {
 /// Returns an error if there are issues during the deletion operation.
 pub async fn run_rm(client: &Client, bucket: &str, s3_object: &Option<String>) -> Result<()> {
     if let Some(object_key) = s3_object {
-        println!(
+        debug!(
             "Deleting object '{}' from bucket '{}'...",
             object_key, bucket
         );
 
-        delete_object(client, bucket, &object_key).await?;
+        delete_object(client, bucket, object_key).await?;
 
-        println!("Object deleted successfully.");
+        eprintln!("Object deleted successfully.");
     } else {
-        println!(
+        eprintln!(
             "Are you sure you want to delete the bucket '{}' and all its contents? (y/N): ",
             bucket
         );
@@ -68,13 +69,13 @@ pub async fn run_rm(client: &Client, bucket: &str, s3_object: &Option<String>) -
             .context("Failed to read from stdin")?;
 
         if confirmation.trim().eq_ignore_ascii_case("y") {
-            println!("Deleting bucket '{}'...", bucket);
+            debug!("Deleting bucket '{}'...", bucket);
 
             delete_bucket(client, bucket).await?;
 
-            println!("Bucket deleted successfully.");
+            eprintln!("Bucket deleted successfully.");
         } else {
-            println!("Bucket deletion cancelled.");
+            eprintln!("Bucket deletion cancelled.");
         }
     }
 

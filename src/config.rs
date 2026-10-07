@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::ErrorKind;
 use std::path::PathBuf;
-use tracing::info;
+use tracing::debug;
 
 /// # Configuration Structure
 /// Represents the configuration settings for S3 access.
@@ -56,6 +56,8 @@ fn load_config() -> Result<Config> {
     let config: Config = toml::from_str(&content)
         .with_context(|| format!("Failed to parse config file at {:?}", config_path))?;
 
+    debug!("Loaded configuration from {:?}", config_path);
+
     Ok(config)
 }
 
@@ -73,6 +75,8 @@ fn save_config(config: &Config) -> Result<()> {
     fs::write(&config_path, content)
         .with_context(|| format!("Failed to write config file to {:?}", config_path))?;
 
+    debug!("Configuration saved to {:?}", config_path);
+
     Ok(())
 }
 
@@ -88,15 +92,15 @@ fn save_config(config: &Config) -> Result<()> {
 pub fn handle_config() -> Result<aws_sdk_s3::Config> {
     let config = match load_config() {
         Ok(config) => {
-            info!("Successfully loaded configuration.");
+            debug!("Successfully loaded configuration.");
             config
         }
 
         Err(e) => {
             if e.downcast_ref::<std::io::Error>()
-                .map_or(false, |io| io.kind() == ErrorKind::NotFound)
+                .is_some_and(|io| io.kind() == ErrorKind::NotFound)
             {
-                info!("No configuration file found. Creating a default one.");
+                debug!("No configuration file found. Creating a default one.");
 
                 let new_config = Config {
                     access_key_id: "YOUR_ACCESS_KEY_ID".to_string(),
@@ -106,15 +110,12 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config> {
                 };
 
                 save_config(&new_config)
-                    .context("Fatal: Could not save the new configuration file")?;
+                    .context("Fatal: Could not save a new configuration file")?;
 
-                println!("Default configuration file created at the standard location.");
-                println!("Please edit it with your S3 credentials before proceeding.");
-
-                println!(
-                    "For S3-compatible services, add and uncomment the `endpoint_url` key in your config file. For example:"
+                eprintln!(
+                    "Default configuration file created at standard location,\n
+                     please edit it with your S3 credentials before proceeding."
                 );
-                println!("# endpoint_url = \"s3.us-east-001.compatible-service.com\"");
 
                 new_config
             } else {
@@ -123,7 +124,13 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config> {
         }
     };
 
-    info!("Current configuration: {:?}", config);
+    let debug_config = Config {
+        access_key_id: "REDACTED".to_string(),
+        secret_access_key: "REDACTED".to_string(),
+        region: config.region.clone(),
+        endpoint_url: config.endpoint_url.clone(),
+    };
+    debug!("Current configuration: {:?}", debug_config);
 
     let Config {
         access_key_id,

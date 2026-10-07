@@ -1,13 +1,14 @@
 # S3 Wayfinder – a friendly Rust TUI/CLI for S3-compatible object storage
 
-*Through the wilderness of object storage, S3 Wayfinder will be your guide.*
+_Through the wilderness of object storage, S3 Wayfinder will be your guide._
 
 > [!WARNING]
 > This project is still in early development. Features may be incomplete or unstable. Installation methods and documentation are also a work in progress.
 
-Using CLI tools for S3-compatible storage can be very hard to use, especially for newcomers. S3 Wayfinder aims to provide a friendly and easy-to-use TUI (Text User Interface) and CLI (Command Line Interface) for managing these storage services. It aims to be compatible with services like Amazon S3, Backblaze B2 and others. 
+Using CLI tools for S3-compatible storage can be very hard to use, especially for newcomers. S3 Wayfinder aims to provide a friendly and easy-to-use TUI (Text User Interface) and CLI (Command Line Interface) for managing these storage services. It aims to be compatible with services like Amazon S3, Backblaze B2 and others.
 
 **Source Repositories:**
+
 - Main: [Codeberg](https://codeberg.org/raphael-denni/s3-wayfinder)
 - Mirror: [GitHub](https://github.com/raphael-denni/s3-wayfinder)
 
@@ -23,30 +24,35 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 ## 🗺️ Roadmap
 
 ### Phase 1: CLI
-- [X] Implement basic configuration system
-- [X] Add core command: `ls`
-- [X] Add core command: `cp`
-- [X] Add core command: `rm`
+
+- [x] Implement basic configuration system
+- [x] Add core command: `ls`
+- [x] Add core command: `cp`
+- [x] Add core command: `rm`
 
 ### Phase 2: TUI
-- [X] Panes for buckets, objects, etc.
-- [X] Status bar
-- [X] Conditional launch
-- [X] Connect S3 logics
+
+- [x] Panes for buckets, objects, etc.
+- [x] Status bar
+- [x] Conditional launch
+- [x] Connect S3 logics
 
 ### Phase 3: Advanced features
-- [X] Configure Forgejo actions in Codeberg for package distribution
-- [ ] Multi-profiles configuration with default
+
+- [x] Configure Forgejo actions in Codeberg for package distribution
 - [ ] Add 'mk' command for bucket and folder creation
 - [ ] Add 'mv' command for moving/renaming objects/buckets
 - [ ] Integrate 'mk' and 'mv' into the TUI
+- [ ] Multi-profiles configuration with default
 - [ ] Nesting of buckets and folders
 
 ### Phase ?
+
 - [ ] Complete the wiki for documentation
 - [ ] Transfer acceleration and parallelism for faster uploads/downloads
 
 ### Sides
+
 - The wiki will be completed along the project
 - The quest for a proper logo
 - World domination plans (Just kidding... or am I?)
@@ -54,9 +60,11 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 ## 📦 Installation
 
 ### From precompiled binaries
+
 You can install S3 Wayfinder by downloading the precompiled binaries from the [Releases](https://codeberg.org/raphael-denni/s3-wayfinder/releases) page on Codeberg. Choose the appropriate binary for your operating system and architecture. (No binaries for macOS, I don't have a Mac to build them, sorry!)
 
 ### From source
+
 To build S3 Wayfinder from source, you need to have Rust and Cargo installed on your system. You can then clone the repository and build the project using the following commands:
 
 ```bash
@@ -91,12 +99,21 @@ You can find all information related to this project and how to use it on the [C
 
 Licensed under either of
 
- * Apache License, Version 2.0
-   ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
- * MIT license
-   ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+- Apache License, Version 2.0
+  ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license
+  ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
+
+## 🤖 genAI declaration
+
+genAI tools were used to:
+
+- Draft the documentation and some comments (currently, most of the documentation is human-written, even the emojis yes)
+- Review the code and suggest improvements (without code edits or snippets proposing)
+
+Other than that, the code was written by me, Raphaël Denni, with my brain and documentation reading. I take full responsibility for the code and its quality.
 
 ## 🙌 Contribution
 

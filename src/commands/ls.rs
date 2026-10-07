@@ -5,6 +5,7 @@
 
 use anyhow::{Context, Result};
 use aws_sdk_s3::Client;
+use tracing::debug;
 
 /// # List S3 Buckets
 /// Returns a list of bucket names
@@ -57,33 +58,33 @@ pub async fn list_objects(client: &Client, bucket: &str) -> Result<Vec<String>> 
 pub async fn run_ls(client: &Client, bucket: &Option<String>) -> Result<()> {
     match bucket {
         Some(bucket_name) => {
-            println!("Listing objects in bucket: {}", bucket_name);
+            debug!("Listing objects in bucket: {}", bucket_name);
 
-            let objects = list_objects(client, &bucket_name).await?;
+            let objects = list_objects(client, bucket_name).await?;
 
             if objects.is_empty() {
-                println!("No objects found in bucket '{}'.", bucket_name);
+                eprintln!("No objects found in bucket '{}'.", bucket_name);
             } else {
-                println!("Objects in '{}':", bucket_name);
+                eprintln!("Found object(s): ");
 
                 for object in objects {
-                    println!("  - {}", object);
+                    println!("{}", object);
                 }
             }
         }
 
         None => {
-            println!("Listing S3 buckets...");
+            debug!("Listing S3 buckets...");
 
             let buckets = list_buckets(client).await?;
 
             if buckets.is_empty() {
-                println!("No S3 buckets found.");
+                eprintln!("No S3 buckets found.");
             } else {
-                println!("S3 Buckets:");
+                eprintln!("Found bucket(s): ");
 
                 for bucket in buckets {
-                    println!("  - {}", bucket);
+                    println!("{}", bucket);
                 }
             }
         }

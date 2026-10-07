@@ -8,18 +8,14 @@
 use anyhow::Result;
 use aws_sdk_s3::Client;
 use clap::Parser;
-use tracing::info;
+use tracing::{debug, error};
 
 mod commands;
 mod config;
 mod tui;
 
 // The main entry point for the s3-wayfinder CLI application.
-#[tokio::main]
-async fn main() -> Result<()> {
-    #[cfg(debug_assertions)]
-    tracing_subscriber::fmt::init();
-
+async fn run_app() -> Result<()> {
     let s3_config = config::handle_config()?;
     let client = Client::from_conf(s3_config);
 
@@ -27,7 +23,7 @@ async fn main() -> Result<()> {
 
     match &cli.commands {
         Some(commands::Commands::Ls { bucket }) => {
-            info!("'ls' command called");
+            debug!("'ls' command called");
             commands::ls::run_ls(&client, bucket).await?;
         }
 
@@ -35,19 +31,34 @@ async fn main() -> Result<()> {
             source,
             destination,
         }) => {
-            info!("'cp' command called");
+            debug!("'cp' command called");
             commands::cp::run_cp(&client, source, destination).await?;
         }
 
         Some(commands::Commands::Rm { bucket, s3_object }) => {
-            info!("'rm' command called");
+            debug!("'rm' command called");
             commands::rm::run_rm(&client, bucket, s3_object).await?;
         }
 
         Some(commands::Commands::Tui) | None => {
-            info!("'tui' started");
+            debug!("'tui' started");
             tui::run_tui(&client).await?;
         }
+    }
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .init();
+
+    if let Err(err) = run_app().await {
+        error!(error = ?err, "Application crashed");
+        eprintln!("Error: {:#}", err);
+        std::process::exit(1);
     }
 
     Ok(())

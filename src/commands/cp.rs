@@ -7,6 +7,7 @@ use anyhow::{Context, Result, bail, ensure};
 use aws_sdk_s3::{Client, primitives::ByteStream};
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, BufWriter};
+use tracing::debug;
 
 // Parses an S3 path in the format "s3://bucket/key" into a tuple of (bucket, key).
 // Returns an error if the path is not valid.
@@ -139,11 +140,11 @@ pub async fn run_cp(client: &Client, source: &str, destination: &str) -> Result<
             let (source_bucket, source_key) = parse_s3_path(source)?;
             let (dest_bucket, dest_key) = parse_s3_path(destination)?;
 
-            println!("Copying from '{}' to '{}'", source, destination);
+            debug!("Copying from '{}' to '{}'", source, destination);
 
             copy_object(client, source_bucket, source_key, dest_bucket, dest_key).await?;
 
-            println!(
+            eprintln!(
                 "Successfully copied object from '{}' to '{}'",
                 source, destination
             );
@@ -152,14 +153,14 @@ pub async fn run_cp(client: &Client, source: &str, destination: &str) -> Result<
         (false, true) => {
             let (dest_bucket, dest_key) = parse_s3_path(destination)?;
 
-            println!(
+            debug!(
                 "Uploading from local '{}' to S3 '{}'...",
                 source, destination,
             );
 
             upload_object(client, source, dest_bucket, dest_key).await?;
 
-            println!(
+            eprintln!(
                 "Successfully uploaded local file '{}' to S3 '{}'",
                 source, destination
             );
@@ -168,23 +169,21 @@ pub async fn run_cp(client: &Client, source: &str, destination: &str) -> Result<
         (true, false) => {
             let (source_bucket, source_key) = parse_s3_path(source)?;
 
-            println!(
+            debug!(
                 "Downloading from S3 '{}' to local '{}'...",
                 source, destination,
             );
 
             download_object(client, source_bucket, source_key, destination).await?;
 
-            println!(
+            eprintln!(
                 "Successfully downloaded S3 '{}' to local '{}'",
                 source, destination
             );
         }
 
         (false, false) => {
-            anyhow::bail!(
-                "Invalid arguments: at least one of source or destination must be an S3 path."
-            );
+            bail!("Invalid arguments: at least one of source or destination must be an S3 path.");
         }
     }
 

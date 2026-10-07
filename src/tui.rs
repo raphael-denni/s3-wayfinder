@@ -361,8 +361,7 @@ async fn main_loop<B: Backend>(
                         app.status =
                             format!("Deleting object {} from bucket {}...", object_key, bucket);
 
-                        match crate::commands::rm::delete_object(client, bucket, &object_key).await
-                        {
+                        match crate::commands::rm::delete_object(client, bucket, object_key).await {
                             Ok(_) => {
                                 app.status =
                                     format!("Deleted object {} from bucket {}", object_key, bucket);
@@ -393,7 +392,7 @@ async fn main_loop<B: Backend>(
 
                         app.status = format!("Deleting bucket {}...", bucket_name);
 
-                        match crate::commands::rm::delete_bucket(client, &bucket_name).await {
+                        match crate::commands::rm::delete_bucket(client, bucket_name).await {
                             Ok(_) => {
                                 app.status = format!("Deleted bucket {}", bucket_name);
 
