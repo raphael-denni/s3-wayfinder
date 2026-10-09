@@ -29,19 +29,25 @@ pub async fn list_buckets(client: &Client) -> Result<Vec<String>> {
 /// # List S3 Objects
 /// Returns a list of object keys in the specified bucket.
 pub async fn list_objects(client: &Client, bucket: &str) -> Result<Vec<String>> {
-    let output = client
+    let mut paginator = client
         .list_objects_v2()
         .bucket(bucket)
-        .send()
-        .await
-        .with_context(|| format!("Failed to list objects in bucket '{}'", bucket))?;
+        .into_paginator()
+        .send();
+    let mut objects = Vec::new();
 
-    let objects = output
-        .contents
-        .unwrap_or_default()
-        .into_iter()
-        .map(|o| o.key.unwrap_or_else(|| "N/A".to_string()))
-        .collect();
+    while let Some(page) = paginator.next().await {
+        let output =
+            page.with_context(|| format!("Failed to list objects in bucket '{}'", bucket))?;
+
+        let page_objects = output
+            .contents
+            .unwrap_or_default()
+            .into_iter()
+            .map(|o| o.key.unwrap_or_else(|| "N/A".to_string()));
+
+        objects.extend(page_objects);
+    }
 
     Ok(objects)
 }
@@ -55,7 +61,7 @@ pub async fn list_objects(client: &Client, bucket: &str) -> Result<Vec<String>> 
 ///
 /// # Errors
 /// Returns an error if there are issues listing buckets or objects.
-pub async fn run_ls(client: &Client, bucket: &Option<String>) -> Result<()> {
+pub async fn run_ls(client: &Client, bucket: Option<&str>) -> Result<()> {
     match bucket {
         Some(bucket_name) => {
             debug!("Listing objects in bucket: {}", bucket_name);

@@ -24,7 +24,7 @@ async fn run_app() -> Result<()> {
     match &cli.commands {
         Some(commands::Commands::Ls { bucket }) => {
             debug!("'ls' command called");
-            commands::ls::run_ls(&client, bucket).await?;
+            commands::ls::run_ls(&client, bucket.as_deref()).await?;
         }
 
         Some(commands::Commands::Cp {
@@ -37,7 +37,7 @@ async fn run_app() -> Result<()> {
 
         Some(commands::Commands::Rm { bucket, s3_object }) => {
             debug!("'rm' command called");
-            commands::rm::run_rm(&client, bucket, s3_object).await?;
+            commands::rm::run_rm(&client, bucket, s3_object.as_deref()).await?;
         }
 
         Some(commands::Commands::Tui) | None => {
@@ -56,8 +56,8 @@ async fn main() -> Result<()> {
         .init();
 
     if let Err(err) = run_app().await {
-        error!(error = ?err, "Application crashed");
-        eprintln!("Error: {:#}", err);
+        error!(error = ?err, "Application crashed with");
+        // eprintln!("Error: {:#}", err);
         std::process::exit(1);
     }
 

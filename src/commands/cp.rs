@@ -6,7 +6,7 @@
 use anyhow::{Context, Result, bail, ensure};
 use aws_sdk_s3::{Client, primitives::ByteStream};
 use tokio::fs::File;
-use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::io::{AsyncWriteExt, BufWriter, copy};
 use tracing::debug;
 
 // Parses an S3 path in the format "s3://bucket/key" into a tuple of (bucket, key).
@@ -86,7 +86,7 @@ pub async fn download_object(
     source_key: &str,
     local_path: &str,
 ) -> Result<()> {
-    let mut output = client
+    let output = client
         .get_object()
         .bucket(source_bucket)
         .key(source_key)
@@ -98,25 +98,21 @@ pub async fn download_object(
                 source_bucket, source_key, local_path
             )
         })?;
-
     let file = File::create(local_path)
         .await
         .with_context(|| format!("Failed to create local file '{}'", local_path))?;
+
+    let mut reader = output.body.into_async_read();
     let mut writer = BufWriter::new(file);
 
-    while let Some(bytes) = output
-        .body
-        .try_next()
+    copy(&mut reader, &mut writer)
         .await
-        .context("Error reading data from S3 stream")?
-    {
-        writer
-            .write_all(&bytes)
-            .await
-            .context("Failed to write data to local file")?;
-    }
+        .context("Failed to copy data from S3 to local file")?;
 
-    writer.flush().await.context("Failed to flush local file")?;
+    writer
+        .flush()
+        .await
+        .context("Failed to flush data to local file")?;
 
     Ok(())
 }

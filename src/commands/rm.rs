@@ -45,7 +45,7 @@ pub async fn delete_bucket(client: &Client, bucket: &str) -> Result<()> {
 ///
 /// # Errors
 /// Returns an error if there are issues during the deletion operation.
-pub async fn run_rm(client: &Client, bucket: &str, s3_object: &Option<String>) -> Result<()> {
+pub async fn run_rm(client: &Client, bucket: &str, s3_object: Option<&str>) -> Result<()> {
     if let Some(object_key) = s3_object {
         debug!(
             "Deleting object '{}' from bucket '{}'...",
@@ -56,12 +56,12 @@ pub async fn run_rm(client: &Client, bucket: &str, s3_object: &Option<String>) -
 
         eprintln!("Object deleted successfully.");
     } else {
-        eprintln!(
-            "Are you sure you want to delete the bucket '{}' and all its contents? (y/N): ",
+        eprint!(
+            "Are you sure you want to delete the bucket '{}'? (y/N): ",
             bucket
         );
 
-        io::stdout().flush().context("Failed to flush stdout")?;
+        io::stderr().flush().context("Failed to flush stdout")?;
 
         let mut confirmation = String::new();
         io::stdin()

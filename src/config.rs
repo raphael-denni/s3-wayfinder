@@ -149,6 +149,8 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config> {
     if let Some(url) = endpoint_url {
         let url = if url.starts_with("http") {
             url
+        } else if url.starts_with("localhost") || url.starts_with("127.0.0.1") {
+            format!("http://{}", url)
         } else {
             format!("https://{}", url)
         };
