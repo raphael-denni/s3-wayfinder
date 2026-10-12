@@ -83,7 +83,7 @@ pub async fn run_tui(client: &Client) -> Result<()> {
         app.state.select(Some(0));
     }
 
-    let app_result = main_loop(&mut terminal_instance, &mut app, client).await;
+    let app_result = main_loop(client, &mut terminal_instance, &mut app).await;
 
     terminal::disable_raw_mode().context("Failed to disable raw mode")?;
 
@@ -106,7 +106,7 @@ pub async fn run_tui(client: &Client) -> Result<()> {
 }
 
 // Update current frame with the latest application state.
-fn update_frame(frame: &mut Frame, app: &mut App) {
+fn update_frame(app: &mut App, frame: &mut Frame) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -180,9 +180,9 @@ fn move_cursor(app: &mut App, direction: i8) {
 // The main application loop for the TUI.
 // It handles rendering and user input.
 async fn main_loop<B: Backend>(
+    client: &Client,
     terminal_instance: &mut Terminal<B>,
     app: &mut App,
-    client: &Client,
 ) -> io::Result<()> {
     let mut current_selection: CurrentSelection = CurrentSelection {
         bucket: None,
@@ -190,7 +190,7 @@ async fn main_loop<B: Backend>(
     };
 
     loop {
-        terminal_instance.draw(|frame| update_frame(frame, app))?;
+        terminal_instance.draw(|frame| update_frame(app, frame))?;
 
         if !event::poll(std::time::Duration::from_millis(250))? {
             continue;
@@ -218,21 +218,22 @@ async fn main_loop<B: Backend>(
                     continue;
                 };
 
-                let selected = app.items[i].clone();
-
+                let selected_element = app.items[i].clone();
                 match &app.view {
                     View::Buckets => {
-                        app.status = format!("Loading objects for {}...", selected);
+                        app.status = format!("Loading objects for {}...", selected_element);
 
-                        match ls::list_objects(client, &selected).await {
+                        match ls::list_objects(client, &selected_element).await {
                             Ok(objects) => {
-                                app.status = format!("Viewing bucket: {}", selected);
+                                app.status = format!("Viewing bucket: {}", selected_element);
 
                                 app.items = objects;
                                 app.state
                                     .select(if app.items.is_empty() { None } else { Some(0) });
 
-                                app.view = View::Objects { bucket: selected };
+                                app.view = View::Objects {
+                                    bucket: selected_element,
+                                };
                             }
 
                             Err(e) => app.status = format!("Error: {:#}", e),
@@ -240,7 +241,7 @@ async fn main_loop<B: Backend>(
                     }
 
                     View::Objects { bucket } => {
-                        app.status = format!("Selected object {} in {}", selected, bucket);
+                        app.status = format!("Selected object {} in {}", selected_element, bucket);
                     }
                 }
             }
@@ -319,10 +320,6 @@ async fn main_loop<B: Backend>(
             },
 
             event::KeyCode::Char('p') => {
-                let Some(src_object) = &current_selection.object else {
-                    continue;
-                };
-
                 let View::Objects {
                     bucket: dest_bucket,
                 } = &app.view
@@ -330,14 +327,13 @@ async fn main_loop<B: Backend>(
                     continue;
                 };
 
-                let src_bucket: &str;
-
-                if let Some(bucket) = &current_selection.bucket {
-                    src_bucket = bucket;
-                } else {
+                let Some(src_object) = &current_selection.object else {
+                    continue;
+                };
+                let Some(src_bucket) = &current_selection.bucket else {
                     app.status = "No source bucket selected for copy.".to_string();
                     continue;
-                }
+                };
 
                 app.status = format!(
                     "Copying object {} from bucket {}...",
@@ -345,14 +341,14 @@ async fn main_loop<B: Backend>(
                 );
 
                 // For demonstration, we'll just copy the object to a new key with "_copy" suffix
-                let dest_key = format!("{}_copy", src_object);
-
-                match cp::copy_object(client, src_bucket, src_object, dest_bucket, &dest_key).await
+                let copy_object = format!("{}_copy", src_object);
+                match cp::copy_object(client, src_bucket, src_object, dest_bucket, &copy_object)
+                    .await
                 {
                     Ok(_) => {
                         app.status = format!(
                             "Copied object {} to {} in bucket {}",
-                            src_object, dest_key, dest_bucket
+                            src_object, copy_object, dest_bucket
                         );
 
                         // Refresh the object list
@@ -379,14 +375,13 @@ async fn main_loop<B: Backend>(
                     continue;
                 }
 
-                let key = match app.state.selected() {
+                let selected_element = match app.state.selected() {
                     Some(i) => &app.items[i],
                     None => continue,
                 };
-
                 match &app.view {
                     View::Buckets => {
-                        let bucket_name = key;
+                        let bucket_name = selected_element;
                         app.status = format!("Deleting bucket {}...", bucket_name);
 
                         match rm::delete_bucket(client, bucket_name).await {
@@ -413,7 +408,7 @@ async fn main_loop<B: Backend>(
                         app.confirm_delete = false;
                     }
                     View::Objects { bucket } => {
-                        let object_key = key;
+                        let object_key = selected_element;
                         app.status =
                             format!("Deleting object {} from bucket {}...", object_key, bucket);
 

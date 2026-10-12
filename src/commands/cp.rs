@@ -3,28 +3,12 @@
 //! # Cp Command for s3-wayfinder CLI.
 //! This module implements the 'cp' command for the s3-wayfinder CLI application.
 
-use anyhow::{Context, Result, bail, ensure};
+use crate::commands::tools::parse_s3_path;
+use anyhow::{Context, Result, bail};
 use aws_sdk_s3::{Client, primitives::ByteStream};
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, BufWriter, copy};
 use tracing::debug;
-
-// Parses an S3 path in the format "s3://bucket/key" into a tuple of (bucket, key).
-// Returns an error if the path is not valid.
-fn parse_s3_path(path: &str) -> Result<(&str, &str)> {
-    let path = path
-        .strip_prefix("s3://")
-        .context("S3 path must start with 's3://'")?;
-
-    if let Some((bucket, key)) = path.split_once('/') {
-        ensure!(!bucket.is_empty(), "Bucket name cannot be empty.");
-        ensure!(!key.is_empty(), "Key cannot be empty.");
-
-        Ok((bucket, key))
-    } else {
-        bail!("S3 path must include a bucket and a key separated by a '/'")
-    }
-}
 
 /// # Copy S3 Object
 /// Copies an object from one S3 location to another
@@ -136,7 +120,7 @@ pub async fn run_cp(client: &Client, source: &str, destination: &str) -> Result<
             let (source_bucket, source_key) = parse_s3_path(source)?;
             let (dest_bucket, dest_key) = parse_s3_path(destination)?;
 
-            debug!("Copying from '{}' to '{}'", source, destination);
+            debug!("Copying from '{}' to '{}'.", source, destination);
 
             copy_object(client, source_bucket, source_key, dest_bucket, dest_key).await?;
 
@@ -149,10 +133,7 @@ pub async fn run_cp(client: &Client, source: &str, destination: &str) -> Result<
         (false, true) => {
             let (dest_bucket, dest_key) = parse_s3_path(destination)?;
 
-            debug!(
-                "Uploading from local '{}' to S3 '{}'...",
-                source, destination,
-            );
+            debug!("Uploading from local '{}' to S3 '{}'.", source, destination,);
 
             upload_object(client, source, dest_bucket, dest_key).await?;
 
@@ -166,7 +147,7 @@ pub async fn run_cp(client: &Client, source: &str, destination: &str) -> Result<
             let (source_bucket, source_key) = parse_s3_path(source)?;
 
             debug!(
-                "Downloading from S3 '{}' to local '{}'...",
+                "Downloading from S3 '{}' to local '{}'.",
                 source, destination,
             );
 

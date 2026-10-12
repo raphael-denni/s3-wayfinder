@@ -47,14 +47,14 @@ pub async fn delete_bucket(client: &Client, bucket: &str) -> Result<()> {
 /// Returns an error if there are issues during the deletion operation.
 pub async fn run_rm(client: &Client, bucket: &str, s3_object: Option<&str>) -> Result<()> {
     if let Some(object_key) = s3_object {
-        debug!(
-            "Deleting object '{}' from bucket '{}'...",
-            object_key, bucket
-        );
+        debug!("Deleting object '{}' from bucket '{}'.", object_key, bucket);
 
         delete_object(client, bucket, object_key).await?;
 
-        eprintln!("Object deleted successfully.");
+        eprintln!(
+            "Object '{}' deleted successfully from bucket '{}'.",
+            object_key, bucket
+        );
     } else {
         eprint!(
             "Are you sure you want to delete the bucket '{}'? (y/N): ",
@@ -69,13 +69,13 @@ pub async fn run_rm(client: &Client, bucket: &str, s3_object: Option<&str>) -> R
             .context("Failed to read from stdin")?;
 
         if confirmation.trim().eq_ignore_ascii_case("y") {
-            debug!("Deleting bucket '{}'...", bucket);
+            debug!("Deleting bucket '{}'.", bucket);
 
             delete_bucket(client, bucket).await?;
 
-            eprintln!("Bucket deleted successfully.");
+            eprintln!("Bucket '{}' deleted successfully.", bucket);
         } else {
-            eprintln!("Bucket deletion cancelled.");
+            eprintln!("Bucket '{}' deletion canceled.", bucket);
         }
     }
 

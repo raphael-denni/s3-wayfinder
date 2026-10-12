@@ -7,8 +7,12 @@
 
 use clap::Parser;
 
+mod tools;
+
 pub mod cp;
 pub mod ls;
+pub mod mk;
+pub mod mv;
 pub mod rm;
 
 /// # CLI Commands for s3-wayfinder
@@ -38,6 +42,18 @@ pub enum Commands {
         bucket: String,
         /// The object key (optional)
         s3_object: Option<String>,
+    },
+    /// Move S3 to S3 and S3 to local. (Objects only)
+    Mv {
+        /// The source S3 object URI or local file path
+        source: String,
+        /// The destination S3 object URI or local file path
+        destination: String,
+    },
+    /// Create a new bucket in S3 storage
+    Mk {
+        /// The bucket name to create
+        bucket: String,
     },
     /// Launch the interactive TUI for s3-wayfinder
     Tui,

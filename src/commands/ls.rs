@@ -64,7 +64,7 @@ pub async fn list_objects(client: &Client, bucket: &str) -> Result<Vec<String>> 
 pub async fn run_ls(client: &Client, bucket: Option<&str>) -> Result<()> {
     match bucket {
         Some(bucket_name) => {
-            debug!("Listing objects in bucket: {}", bucket_name);
+            debug!("Listing objects in bucket: {}.", bucket_name);
 
             let objects = list_objects(client, bucket_name).await?;
 
@@ -80,8 +80,6 @@ pub async fn run_ls(client: &Client, bucket: Option<&str>) -> Result<()> {
         }
 
         None => {
-            debug!("Listing S3 buckets...");
-
             let buckets = list_buckets(client).await?;
 
             if buckets.is_empty() {

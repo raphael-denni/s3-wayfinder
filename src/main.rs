@@ -9,6 +9,7 @@ use anyhow::Result;
 use aws_sdk_s3::Client;
 use clap::Parser;
 use tracing::{debug, error};
+use tracing_subscriber::EnvFilter;
 
 mod commands;
 mod config;
@@ -40,6 +41,19 @@ async fn run_app() -> Result<()> {
             commands::rm::run_rm(&client, bucket, s3_object.as_deref()).await?;
         }
 
+        Some(commands::Commands::Mv {
+            source,
+            destination,
+        }) => {
+            debug!("'mv' command called");
+            commands::mv::run_mv(&client, source, destination).await?;
+        }
+
+        Some(commands::Commands::Mk { bucket }) => {
+            debug!("'mk' command called");
+            commands::mk::run_mk(&client, bucket).await?;
+        }
+
         Some(commands::Commands::Tui) | None => {
             debug!("'tui' started");
             tui::run_tui(&client).await?;
@@ -52,6 +66,9 @@ async fn run_app() -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn")),
+        )
         .with_writer(std::io::stderr)
         .init();
 

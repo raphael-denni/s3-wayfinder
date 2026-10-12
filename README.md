@@ -23,33 +23,29 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 
 ## 🗺️ Roadmap
 
-### Phase 1: CLI
+### Phase 1 & 2 : CLI + TUI (v0.1.0)
 
 - [x] Implement basic configuration system
 - [x] Add core command: `ls`
 - [x] Add core command: `cp`
 - [x] Add core command: `rm`
-
-### Phase 2: TUI
-
 - [x] Panes for buckets, objects, etc.
 - [x] Status bar
 - [x] Conditional launch
 - [x] Connect S3 logics
 
-### Phase 3: Advanced features
+### Phase 3: Advanced features (v0.2.0)
 
 - [x] Configure Forgejo actions in Codeberg for package distribution
-- [ ] Add 'mk' command for bucket and folder creation
-- [ ] Add 'mv' command for moving/renaming objects/buckets
+- [x] Add 'mk' command for bucket and folder creation
+- [x] Add 'mv' command for moving/renaming objects/buckets
 - [ ] Integrate 'mk' and 'mv' into the TUI
+
+### Phase 4: Enhancements and polish (v0.3.0)
+
 - [ ] Multi-profiles configuration with default
 - [ ] Nesting of buckets and folders
-
-### Phase ?
-
 - [ ] Complete the wiki for documentation
-- [ ] Transfer acceleration and parallelism for faster uploads/downloads
 
 ### Sides
 
