@@ -3,6 +3,7 @@
 //! # Rm Command for s3-wayfinder CLI.
 //! This module implements the 'rm' command for the s3-wayfinder CLI application.
 
+use crate::commands::tools::parse_s3_path;
 use anyhow::{Context, Result};
 use aws_sdk_s3::Client;
 use std::io::{self, Write};
@@ -40,12 +41,12 @@ pub async fn delete_bucket(client: &Client, bucket: &str) -> Result<()> {
 ///
 /// # Arguments
 /// - `client`: An instance of the AWS S3 client.
-/// - `bucket`: The name of the bucket to delete or from which to delete an object.
-/// - `s3_object`: An optional object key. If provided, deletes the object; otherwise, deletes the bucket.
+/// - `s3_path`: The S3 path to the bucket or object to remove, which must start with `s3://`.
 ///
 /// # Errors
 /// Returns an error if there are issues during the deletion operation.
-pub async fn run_rm(client: &Client, bucket: &str, s3_object: Option<&str>) -> Result<()> {
+pub async fn run_rm(client: &Client, s3_path: &str) -> Result<()> {
+    let (bucket, s3_object) = parse_s3_path(s3_path)?;
     if let Some(object_key) = s3_object {
         debug!("Deleting object '{}' from bucket '{}'.", object_key, bucket);
 
@@ -61,7 +62,7 @@ pub async fn run_rm(client: &Client, bucket: &str, s3_object: Option<&str>) -> R
             bucket
         );
 
-        io::stderr().flush().context("Failed to flush stdout")?;
+        io::stderr().flush().context("Failed to flush stderr")?;
 
         let mut confirmation = String::new();
         io::stdin()

@@ -8,19 +8,20 @@
 //! The TUI allows users to navigate S3 buckets, view objects, and perform operations
 //! such as uploading, downloading, and deleting files directly from the terminal.
 
-use std::io;
-
-use crate::commands::{cp, ls, mk, mv, rm};
+use crate::commands::{cp, ls, rm};
 use anyhow::{Context, Result, bail};
 use aws_sdk_s3::Client;
-use crossterm::{event, execute, terminal};
+use ratatui::crossterm::{event, execute, terminal};
 use ratatui::{
     Frame, Terminal,
     layout::{Constraint, Direction, Layout},
     prelude::{Backend, CrosstermBackend},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
-use uuid::Uuid;
+use std::{
+    io,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 enum View {
     Buckets,
@@ -218,25 +219,21 @@ async fn main_loop<B: Backend>(
 
                 let selected_element = app.items[i].clone();
                 match &app.view {
-                    View::Buckets => {
-                        app.status = format!("Loading objects for {}...", selected_element);
+                    View::Buckets => match ls::list_objects(client, &selected_element).await {
+                        Ok(objects) => {
+                            app.status = format!("Viewing bucket: {}", selected_element);
 
-                        match ls::list_objects(client, &selected_element).await {
-                            Ok(objects) => {
-                                app.status = format!("Viewing bucket: {}", selected_element);
+                            app.items = objects;
+                            app.state
+                                .select(if app.items.is_empty() { None } else { Some(0) });
 
-                                app.items = objects;
-                                app.state
-                                    .select(if app.items.is_empty() { None } else { Some(0) });
-
-                                app.view = View::Objects {
-                                    bucket: selected_element,
-                                };
-                            }
-
-                            Err(e) => app.status = format!("Error: {:#}", e),
+                            app.view = View::Objects {
+                                bucket: selected_element,
+                            };
                         }
-                    }
+
+                        Err(e) => app.status = format!("Error: {:#}", e),
+                    },
 
                     View::Objects { bucket } => {
                         app.status = format!("Selected object {} in {}", selected_element, bucket);
@@ -253,76 +250,66 @@ async fn main_loop<B: Backend>(
 
                 match &app.view {
                     View::Buckets => {}
-                    View::Objects { .. } => {
-                        app.status = "Loading buckets...".to_string();
-
-                        match ls::list_buckets(client).await {
-                            Ok(buckets) => {
-                                app.items = buckets;
-                                app.view = View::Buckets;
-                                app.state
-                                    .select(if app.items.is_empty() { None } else { Some(0) });
-                                app.status = "Connected to S3".to_string();
-                            }
-
-                            Err(e) => app.status = format!("Error: {:#}", e),
-                        }
-                    }
-                }
-            }
-
-            event::KeyCode::Char('r') => match &app.view {
-                View::Buckets => {
-                    app.status = "Refreshing buckets...".to_string();
-
-                    match ls::list_buckets(client).await {
+                    View::Objects { .. } => match ls::list_buckets(client).await {
                         Ok(buckets) => {
                             app.items = buckets;
+                            app.view = View::Buckets;
                             app.state
                                 .select(if app.items.is_empty() { None } else { Some(0) });
                             app.status = "Connected to S3".to_string();
                         }
 
                         Err(e) => app.status = format!("Error: {:#}", e),
-                    }
+                    },
                 }
-                View::Objects { bucket } => {
-                    app.status = format!("Refreshing objects in bucket {}...", bucket);
+            }
 
-                    match ls::list_objects(client, bucket).await {
-                        Ok(objects) => {
-                            app.items = objects;
-                            app.state
-                                .select(if app.items.is_empty() { None } else { Some(0) });
-                            app.status = format!("Viewing bucket: {}", bucket);
-                        }
-
-                        Err(e) => app.status = format!("Error: {:#}", e),
+            event::KeyCode::Char('r') => match &app.view {
+                View::Buckets => match ls::list_buckets(client).await {
+                    Ok(buckets) => {
+                        app.items = buckets;
+                        app.state
+                            .select(if app.items.is_empty() { None } else { Some(0) });
+                        app.status = "Connected to S3".to_string();
                     }
-                }
+
+                    Err(e) => app.status = format!("Error: {:#}", e),
+                },
+                View::Objects { bucket } => match ls::list_objects(client, bucket).await {
+                    Ok(objects) => {
+                        app.items = objects;
+                        app.state
+                            .select(if app.items.is_empty() { None } else { Some(0) });
+                        app.status = format!("Viewing bucket: {}", bucket);
+                    }
+
+                    Err(e) => app.status = format!("Error: {:#}", e),
+                },
             },
 
             event::KeyCode::Char('k') => match &app.view {
                 View::Buckets => {
-                    app.status = "Creating new bucket...".to_string();
-
-                    let new_bucket_name = format!("bucket-{}", Uuid::now_v7());
-                    match mk::run_mk(client, &new_bucket_name).await {
+                    let new_bucket_name = format!(
+                        "bucket-{:?}",
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    );
+                    match client.create_bucket().bucket(&new_bucket_name).send().await {
                         Ok(_) => {
                             app.status = format!("Created new bucket: {}", new_bucket_name);
+                        }
+                        Err(e) => {
+                            app.status = format!("Error creating bucket: {:#}", e);
+                        }
+                    };
 
-                            match ls::list_buckets(client).await {
-                                Ok(buckets) => {
-                                    app.items = buckets;
-                                    app.state.select(if app.items.is_empty() {
-                                        None
-                                    } else {
-                                        Some(0)
-                                    });
-                                }
-
-                                Err(e) => app.status = format!("Error: {:#}", e),
-                            }
+                    match ls::list_buckets(client).await {
+                        Ok(buckets) => {
+                            app.items = buckets;
+                            app.state
+                                .select(if app.items.is_empty() { None } else { Some(0) });
                         }
 
                         Err(e) => app.status = format!("Error: {:#}", e),
@@ -355,11 +342,6 @@ async fn main_loop<B: Backend>(
                         app.status = "No object selected for copying.".to_string();
                         continue;
                     }
-
-                    app.status = format!(
-                        "Copying object {} from bucket {}...",
-                        src_object, src_bucket
-                    );
 
                     // For demonstration, we'll just copy the object to a new key with "_copy" suffix
                     let copy_object = format!("{}_copy", src_object);
@@ -396,40 +378,49 @@ async fn main_loop<B: Backend>(
             event::KeyCode::Char('m') => match &app.view {
                 View::Buckets => {}
                 View::Objects { bucket } => {
-                    let src_bucket = &current_selection.bucket;
-                    let src_object = &current_selection.object;
-                    if src_bucket.is_empty() || src_object.is_empty() {
-                        app.status = "No object selected for copying.".to_string();
+                    let source_bucket = &current_selection.bucket;
+                    let source_object = &current_selection.object;
+                    if source_bucket.is_empty() || source_object.is_empty() {
+                        app.status = "No object selected for moving.".to_string();
                         continue;
                     }
 
+                    match cp::copy_object(
+                        client,
+                        source_bucket,
+                        source_object,
+                        bucket,
+                        source_object,
+                    )
+                    .await
+                    {
+                        Ok(_) => {}
+
+                        Err(e) => {
+                            app.status = format!("Error: {:#}", e);
+                            continue;
+                        }
+                    };
+                    match rm::delete_object(client, source_bucket, source_object).await {
+                        Ok(_) => {}
+
+                        Err(e) => {
+                            app.status = format!("Error: {:#}", e);
+                            continue;
+                        }
+                    };
+
                     app.status = format!(
-                        "Moving object {} from bucket {} to bucket {}...",
-                        src_object, src_bucket, bucket
+                        "Moved object {} from bucket {} to bucket {}",
+                        source_object, source_bucket, bucket
                     );
 
-                    let source = format!("s3://{}/{}", src_bucket, src_object);
-                    let destination = format!("s3://{}/{}", bucket, src_object);
-                    match mv::run_mv(client, &source, &destination).await {
-                        Ok(_) => {
-                            app.status = format!(
-                                "Moved object {} from bucket {} to bucket {}",
-                                src_object, src_bucket, bucket
-                            );
-
-                            // Refresh the object list
-                            match ls::list_objects(client, bucket).await {
-                                Ok(objects) => {
-                                    app.items = objects;
-                                    app.state.select(if app.items.is_empty() {
-                                        None
-                                    } else {
-                                        Some(0)
-                                    });
-                                }
-
-                                Err(e) => app.status = format!("Error: {:#}", e),
-                            }
+                    // Refresh the object list
+                    match ls::list_objects(client, bucket).await {
+                        Ok(objects) => {
+                            app.items = objects;
+                            app.state
+                                .select(if app.items.is_empty() { None } else { Some(0) });
                         }
 
                         Err(e) => app.status = format!("Error: {:#}", e),
@@ -452,8 +443,6 @@ async fn main_loop<B: Backend>(
                 match &app.view {
                     View::Buckets => {
                         let bucket_name = selected_element;
-                        app.status = format!("Deleting bucket {}...", bucket_name);
-
                         match rm::delete_bucket(client, bucket_name).await {
                             Ok(_) => {
                                 app.status = format!("Deleted bucket {}", bucket_name);
@@ -479,9 +468,6 @@ async fn main_loop<B: Backend>(
                     }
                     View::Objects { bucket } => {
                         let object_key = selected_element;
-                        app.status =
-                            format!("Deleting object {} from bucket {}...", object_key, bucket);
-
                         match rm::delete_object(client, bucket, object_key).await {
                             Ok(_) => {
                                 app.status =

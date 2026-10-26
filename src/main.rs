@@ -22,35 +22,35 @@ async fn run_app() -> Result<()> {
 
     let cli = commands::Cli::parse();
     match &cli.commands {
-        Some(commands::Commands::Ls { bucket }) => {
+        Some(commands::Commands::Ls { bucket_path }) => {
             debug!("'ls' command called");
-            commands::ls::run_ls(&client, bucket.as_deref()).await?;
+            commands::ls::run_ls(&client, bucket_path.as_deref()).await?;
+        }
+
+        Some(commands::Commands::Mk { bucket_path }) => {
+            debug!("'mk' command called");
+            commands::mk::run_mk(&client, bucket_path).await?;
+        }
+
+        Some(commands::Commands::Rm { s3_path }) => {
+            debug!("'rm' command called");
+            commands::rm::run_rm(&client, s3_path).await?;
         }
 
         Some(commands::Commands::Cp {
-            source,
-            destination,
+            source_path,
+            destination_path,
         }) => {
             debug!("'cp' command called");
-            commands::cp::run_cp(&client, source, destination).await?;
-        }
-
-        Some(commands::Commands::Rm { bucket, s3_object }) => {
-            debug!("'rm' command called");
-            commands::rm::run_rm(&client, bucket, s3_object.as_deref()).await?;
+            commands::cp::run_cp(&client, source_path, destination_path).await?;
         }
 
         Some(commands::Commands::Mv {
-            source,
-            destination,
+            source_path,
+            destination_path,
         }) => {
             debug!("'mv' command called");
-            commands::mv::run_mv(&client, source, destination).await?;
-        }
-
-        Some(commands::Commands::Mk { bucket }) => {
-            debug!("'mk' command called");
-            commands::mk::run_mk(&client, bucket).await?;
+            commands::mv::run_mv(&client, source_path, destination_path).await?;
         }
 
         Some(commands::Commands::Tui) | None => {

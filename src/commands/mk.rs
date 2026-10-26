@@ -10,11 +10,15 @@ use anyhow::{Context, Result};
 ///
 /// # Arguments
 /// - `client`: An instance of the AWS S3 client.
-/// - `bucket`: The name of the S3 bucket to create.
+/// - `bucket_path`: The name of the S3 bucket to create, which must start with `s3://`.
 ///
 /// # Errors
 /// Returns an error if there are issues during the bucket creation operation.
-pub async fn run_mk(client: &aws_sdk_s3::Client, bucket: &str) -> Result<()> {
+pub async fn run_mk(client: &aws_sdk_s3::Client, bucket_path: &str) -> Result<()> {
+    let bucket = bucket_path
+        .strip_prefix("s3://")
+        .context("Bucket path must start with 's3://'")?;
+
     client
         .create_bucket()
         .bucket(bucket)

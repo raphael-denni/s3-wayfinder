@@ -57,13 +57,16 @@ pub async fn list_objects(client: &Client, bucket: &str) -> Result<Vec<String>> 
 ///
 /// # Arguments
 /// - `client`: An instance of the AWS S3 client.
-/// - `bucket`: An optional bucket name. If provided, lists objects in that bucket; otherwise, lists all buckets.
+/// - `bucket_path`: An optional bucket path. If provided, lists objects in that bucket; otherwise, lists all buckets.
 ///
 /// # Errors
 /// Returns an error if there are issues listing buckets or objects.
-pub async fn run_ls(client: &Client, bucket: Option<&str>) -> Result<()> {
-    match bucket {
-        Some(bucket_name) => {
+pub async fn run_ls(client: &Client, bucket_path: Option<&str>) -> Result<()> {
+    match bucket_path {
+        Some(bucket_path) => {
+            let bucket_name = bucket_path
+                .strip_prefix("s3://")
+                .context("Bucket path must start with 's3://'")?;
             debug!("Listing objects in bucket: {}.", bucket_name);
 
             let objects = list_objects(client, bucket_name).await?;

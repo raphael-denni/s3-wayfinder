@@ -4,7 +4,7 @@
 //! This module implements the 'cp' command for the s3-wayfinder CLI application.
 
 use crate::commands::tools::parse_s3_path;
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use aws_sdk_s3::{Client, primitives::ByteStream};
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, BufWriter, copy};
@@ -106,56 +106,84 @@ pub async fn download_object(
 ///
 /// # Arguments
 /// - `client`: An instance of the AWS S3 client.
-/// - `source`: The source S3 object URI or local file path.
-/// - `destination`: The destination S3 object URI or local file path.
+/// - `source_path`: The source S3 object URI or local file path.
+/// - `destination_path`: The destination S3 object URI or local file path.
 ///
 /// # Errors
 /// Returns an error if there are issues during the copy operation.
-pub async fn run_cp(client: &Client, source: &str, destination: &str) -> Result<()> {
-    let source_is_s3 = source.starts_with("s3://");
-    let destination_is_s3 = destination.starts_with("s3://");
+pub async fn run_cp(client: &Client, source_path: &str, destination_path: &str) -> Result<()> {
+    let source_is_s3 = source_path.starts_with("s3://");
+    let destination_is_s3 = destination_path.starts_with("s3://");
 
     match (source_is_s3, destination_is_s3) {
         (true, true) => {
-            let (source_bucket, source_key) = parse_s3_path(source)?;
-            let (dest_bucket, dest_key) = parse_s3_path(destination)?;
+            let (source_bucket, source_key) = parse_s3_path(source_path)?;
+            ensure!(
+                source_key.is_some(),
+                "Source path '{}' must include an object key.",
+                source_path
+            );
 
-            debug!("Copying from '{}' to '{}'.", source, destination);
+            let (dest_bucket, dest_key) = parse_s3_path(destination_path)?;
+            ensure!(
+                dest_key.is_some(),
+                "Destination path '{}' must include an object key.",
+                destination_path
+            );
 
-            copy_object(client, source_bucket, source_key, dest_bucket, dest_key).await?;
+            debug!("Copying from '{}' to '{}'.", source_path, destination_path);
+            copy_object(
+                client,
+                source_bucket,
+                source_key.unwrap(),
+                dest_bucket,
+                dest_key.unwrap(),
+            )
+            .await?;
 
             eprintln!(
                 "Successfully copied object from '{}' to '{}'",
-                source, destination
+                source_path, destination_path
             );
         }
 
         (false, true) => {
-            let (dest_bucket, dest_key) = parse_s3_path(destination)?;
+            let (dest_bucket, dest_key) = parse_s3_path(destination_path)?;
+            ensure!(
+                dest_key.is_some(),
+                "Destination path '{}' must include an object key.",
+                destination_path
+            );
 
-            debug!("Uploading from local '{}' to S3 '{}'.", source, destination,);
-
-            upload_object(client, source, dest_bucket, dest_key).await?;
+            debug!(
+                "Uploading from local '{}' to S3 '{}'.",
+                source_path, destination_path,
+            );
+            upload_object(client, source_path, dest_bucket, dest_key.unwrap()).await?;
 
             eprintln!(
                 "Successfully uploaded local file '{}' to S3 '{}'",
-                source, destination
+                source_path, destination_path
             );
         }
 
         (true, false) => {
-            let (source_bucket, source_key) = parse_s3_path(source)?;
+            let (source_bucket, source_key) = parse_s3_path(source_path)?;
+            ensure!(
+                source_key.is_some(),
+                "Source path '{}' must include an object key.",
+                source_path
+            );
 
             debug!(
                 "Downloading from S3 '{}' to local '{}'.",
-                source, destination,
+                source_path, destination_path,
             );
-
-            download_object(client, source_bucket, source_key, destination).await?;
+            download_object(client, source_bucket, source_key.unwrap(), destination_path).await?;
 
             eprintln!(
                 "Successfully downloaded S3 '{}' to local '{}'",
-                source, destination
+                source_path, destination_path
             );
         }
 
