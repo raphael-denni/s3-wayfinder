@@ -34,7 +34,7 @@ jobs:
 
   tests:
     name: Test (Linux Dev)
-    runs-on: codeberg-small-lazy
+    runs-on: codeberg-medium-lazy
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -37,7 +37,7 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 ### Phase 3: Advanced features (v0.2.0)
 
 - [x] Configure Forgejo actions in Codeberg for package distribution
-- [x] Add 'mk' command for bucket and folder creation
+- [x] Add 'mk' command for bucket creation
 - [x] Add 'mv' command for moving/renaming objects/buckets
 - [x] Integrate 'mk' and 'mv' into the TUI
 
@@ -82,9 +82,11 @@ s3wf
 To use the CLI, you can run commands like:
 
 ```bash
-s3wf ls
-s3wf cp source destination
-s3wf rm object
+s3wf ls [bucket_path]
+s3wf mk <bucket_path>
+s3wf rm <path>
+s3wf cp <source_path> <destination_path>
+s3wf mv <source_path> <destination_path>
 ```
 
 ## 📚 Documentation
