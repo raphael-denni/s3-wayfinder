@@ -39,7 +39,7 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 - [x] Configure Forgejo actions in Codeberg for package distribution
 - [x] Add 'mk' command for bucket and folder creation
 - [x] Add 'mv' command for moving/renaming objects/buckets
-- [ ] Integrate 'mk' and 'mv' into the TUI
+- [x] Integrate 'mk' and 'mv' into the TUI
 
 ### Phase 4: Enhancements and polish (v0.3.0)
 

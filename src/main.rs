@@ -21,7 +21,6 @@ async fn run_app() -> Result<()> {
     let client = Client::from_conf(s3_config);
 
     let cli = commands::Cli::parse();
-
     match &cli.commands {
         Some(commands::Commands::Ls { bucket }) => {
             debug!("'ls' command called");

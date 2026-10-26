@@ -8,7 +8,7 @@
 //! under a subdirectory named `s3-wayfinder`.
 
 use anyhow::{Context, Result};
-use aws_sdk_s3::{config::Credentials, config::Region};
+use aws_sdk_s3::config::{Credentials, Region};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::ErrorKind;
@@ -91,10 +91,7 @@ fn save_config(config: &Config) -> Result<()> {
 /// Ok(aws_sdk_s3::Config) - The configured AWS S3 configuration object.
 pub fn handle_config() -> Result<aws_sdk_s3::Config> {
     let config = match load_config() {
-        Ok(config) => {
-            debug!("Successfully loaded configuration.");
-            config
-        }
+        Ok(config) => config,
 
         Err(e) => {
             if e.downcast_ref::<std::io::Error>()
