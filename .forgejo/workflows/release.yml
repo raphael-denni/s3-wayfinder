@@ -16,14 +16,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
-          echo "$HOME/.cargo/bin" >> $FORGEJO_PATH
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config zip
+      - name: Setup Rust
+        uses: ./.forgejo/actions/setup-rust
+        with:
+          packages: libssl-dev pkg-config zip
 
       - name: Build Release
         run: cargo build --verbose --release
@@ -50,14 +46,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal --target x86_64-pc-windows-gnu
-          echo "$HOME/.cargo/bin" >> $FORGEJO_PATH
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y mingw-w64 zip
+      - name: Setup Rust
+        uses: ./.forgejo/actions/setup-rust
+        with:
+          targets: x86_64-pc-windows-gnu
+          packages: mingw-w64 zip
 
       - name: Build Release (Windows)
         run: cargo build --verbose --release --target x86_64-pc-windows-gnu
