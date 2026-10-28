@@ -14,7 +14,7 @@ jobs:
     runs-on: codeberg-medium-lazy
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         run: |
@@ -30,6 +30,7 @@ jobs:
 
       - name: Package (Linux)
         run: |
+          set -eu
           VERSION=${{ forgejo.ref_name }}
           VERSION=${VERSION#v}
           mkdir -p dist
@@ -47,7 +48,7 @@ jobs:
     runs-on: codeberg-medium-lazy
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         run: |
@@ -63,6 +64,7 @@ jobs:
 
       - name: Package (Windows)
         run: |
+          set -eu
           VERSION=${{ forgejo.ref_name }}
           VERSION=${VERSION#v}
           mkdir -p dist
@@ -80,6 +82,22 @@ jobs:
     needs: [build-linux, build-windows]
     runs-on: codeberg-tiny-lazy
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate a release notes
+        uses: https://github.com/orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose --current
+        env:
+          OUTPUT: RELEASE_NOTES.md
+
+      - name: Strip version header
+        run: sed -i -e '1{/^## /d}' -e '/./,$!d' RELEASE_NOTES.md
+
       - name: Download Linux Artifact
         uses: actions/download-artifact@v3
         with:
@@ -108,5 +126,5 @@ jobs:
           direction: upload
           release-dir: assets
           token: ${{ forgejo.token }}
-          draft: true
-          prerelease: true
+          release-notes-file: RELEASE_NOTES.md
+          prerelease: ${{ startsWith(forgejo.ref_name, 'v0.') || contains(forgejo.ref_name, '-rc') }}
