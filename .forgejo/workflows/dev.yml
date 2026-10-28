@@ -21,13 +21,13 @@ jobs:
         uses: ./.forgejo/actions/setup-rust
         with:
           components: clippy rustfmt
-          packages: libssl-dev pkg-config
+          packages: libssl-dev pkg-config mold
 
       - name: Format Check
         run: cargo fmt --all -- --check
 
       - name: Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features --profile debugging -- -D warnings
 
   tests:
     name: Test (Linux Dev)
@@ -39,7 +39,7 @@ jobs:
       - name: Setup Rust
         uses: ./.forgejo/actions/setup-rust
         with:
-          packages: libssl-dev pkg-config
+          packages: libssl-dev pkg-config mold
 
       - name: Run Tests
-        run: cargo test --verbose
+        run: cargo test --verbose --profile debugging

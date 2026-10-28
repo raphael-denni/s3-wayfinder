@@ -19,7 +19,7 @@ jobs:
       - name: Setup Rust
         uses: ./.forgejo/actions/setup-rust
         with:
-          packages: libssl-dev pkg-config zip
+          packages: libssl-dev pkg-config zip mold
 
       - name: Build Release
         run: cargo build --verbose --release
