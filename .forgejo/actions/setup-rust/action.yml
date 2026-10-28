@@ -1,0 +1,67 @@
+name: Setup Rust
+description: Install Rust via rustup and optional apt packages
+inputs:
+  toolchain:
+    description: rustup toolchain (stable, beta, nightly)
+    required: false
+    default: stable
+
+  profile:
+    description: rustup profile (minimal, default, complete)
+    required: false
+    default: minimal
+
+  targets:
+    description: Space-separated extra targets (e.g. "wasm32-unknown-unknown")
+    required: false
+    default: ""
+
+  components:
+    description: Space-separated rustup components (e.g. "clippy rustfmt")
+    required: false
+    default: ""
+
+  crates:
+    description: Space-separated crates to install (e.g. "cargo-edit cargo-watch")
+    required: false
+    default: ""
+
+  packages:
+    description: Space-separated apt packages (e.g. "libssl-dev pkg-config")
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust
+      shell: bash
+      env:
+        RUST_TOOLCHAIN: ${{ inputs.toolchain }}
+        RUST_PROFILE: ${{ inputs.profile }}
+        RUST_TARGETS: ${{ inputs.targets }}
+        RUST_COMPONENTS: ${{ inputs.components }}
+      run: |
+        args=()
+        for t in $RUST_TARGETS; do args+=(--target "$t"); done
+        for c in $RUST_COMPONENTS; do args+=(--component "$c"); done
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain "$RUST_TOOLCHAIN" --profile "$RUST_PROFILE" "${args[@]}"
+        echo "$HOME/.cargo/bin" >> $FORGEJO_PATH
+
+    - name: Install crates
+      if: ${{ inputs.crates != '' }}
+      shell: bash
+      env:
+        RUST_CRATES: ${{ inputs.crates }}
+      run: |
+        for crate in $RUST_CRATES; do
+          cargo install "$crate"
+        done
+
+    - name: Install apt packages
+      if: ${{ inputs.packages != '' }}
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.packages }}
+      run: |
+        sudo apt-get update && sudo apt-get install -y $APT_PACKAGES

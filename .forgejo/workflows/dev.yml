@@ -17,14 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal --component clippy --component rustfmt
-          echo "$HOME/.cargo/bin" >> $FORGEJO_PATH
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+      - name: Setup Rust
+        uses: ./.forgejo/actions/setup-rust
+        with:
+          components: clippy rustfmt
+          packages: libssl-dev pkg-config
 
       - name: Format Check
         run: cargo fmt --all -- --check
@@ -39,14 +36,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
-          echo "$HOME/.cargo/bin" >> $FORGEJO_PATH
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+      - name: Setup Rust
+        uses: ./.forgejo/actions/setup-rust
+        with:
+          packages: libssl-dev pkg-config
 
       - name: Run Tests
         run: cargo test --verbose
