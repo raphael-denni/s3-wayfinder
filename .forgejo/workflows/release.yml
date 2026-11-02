@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]*'
 
 env:
   CARGO_TERM_COLOR: always
@@ -29,12 +29,10 @@ jobs:
           set -eu
           VERSION=${{ forgejo.ref_name }}
           VERSION=${VERSION#v}
-          mkdir -p dist
-          cp target/release/s3wf dist/s3wf
-          cd dist && zip ../s3wf-${VERSION}-linux-x64.zip s3wf
+          zip -j s3wf-${VERSION}-linux-x64.zip target/release/s3wf
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: https://data.forgejo.org/forgejo/upload-artifact@v5
         with:
           name: s3wf-linux-x64
           path: s3wf-*-linux-x64.zip
@@ -49,23 +47,27 @@ jobs:
       - name: Setup Rust
         uses: ./.forgejo/actions/setup-rust
         with:
-          targets: x86_64-pc-windows-gnu
-          packages: mingw-w64 zip
+          targets: x86_64-pc-windows-gnullvm
+          crates: cargo-zigbuild
+          packages: zip
+
+      - name: Install Zig
+        uses: https://codeberg.org/mlugg/setup-zig@v2
+        with:
+          version: 0.17.0
 
       - name: Build Release (Windows)
-        run: cargo build --verbose --release --target x86_64-pc-windows-gnu
+        run: cargo zigbuild --verbose --release --target x86_64-pc-windows-gnullvm
 
       - name: Package (Windows)
         run: |
           set -eu
           VERSION=${{ forgejo.ref_name }}
           VERSION=${VERSION#v}
-          mkdir -p dist
-          cp target/x86_64-pc-windows-gnu/release/s3wf.exe dist/s3wf.exe
-          cd dist && zip ../s3wf-${VERSION}-windows-x64.zip s3wf.exe
+          zip -j s3wf-${VERSION}-windows-x64.zip target/x86_64-pc-windows-gnullvm/release/s3wf.exe
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: https://data.forgejo.org/forgejo/upload-artifact@v5
         with:
           name: s3wf-windows-x64
           path: s3wf-*-windows-x64.zip
@@ -88,20 +90,16 @@ jobs:
         env:
           OUTPUT: RELEASE_NOTES.md
 
-      - name: Strip version header
-        run: sed -i -e '1{/^## /d}' -e '/./,$!d' RELEASE_NOTES.md
+      - name: Check & strip version header
+        run: |
+          test -s RELEASE_NOTES.md
+          sed -i -e '1{/^## /d}' -e '/./,$!d' RELEASE_NOTES.md
 
-      - name: Download Linux Artifact
-        uses: actions/download-artifact@v3
+      - name: Download Artifacts
+        uses: https://data.forgejo.org/forgejo/download-artifact@v5
         with:
-          name: s3wf-linux-x64
           path: assets
-
-      - name: Download Windows Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: s3wf-windows-x64
-          path: assets
+          merge-multiple: true
 
       - name: Verify Release Assets
         run: |
