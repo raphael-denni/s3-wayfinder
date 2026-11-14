@@ -32,6 +32,7 @@ pub async fn copy_object(
                 source_bucket, source_key, dest_bucket, dest_key
             )
         })?;
+
     Ok(())
 }
 
@@ -111,7 +112,7 @@ pub async fn download_object(
 ///
 /// # Errors
 /// Returns an error if there are issues during the copy operation.
-pub async fn run_cp(client: &Client, source_path: &str, destination_path: &str) -> Result<()> {
+pub async fn run(client: &Client, source_path: &str, destination_path: &str) -> Result<()> {
     let source_is_s3 = source_path.starts_with("s3://");
     let destination_is_s3 = destination_path.starts_with("s3://");
 

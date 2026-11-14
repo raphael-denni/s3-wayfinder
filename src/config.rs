@@ -28,7 +28,7 @@ use tracing::debug;
 /// - `Debug`: For formatting the configuration for debugging purposes.
 /// - `Deserialize`: For deserializing the configuration from TOML format.
 /// - `Serialize`: For serializing the configuration to TOML format.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Default, Debug, Deserialize, Serialize)]
 pub struct Config {
     pub access_key_id: String,
     pub secret_access_key: String,
@@ -40,7 +40,6 @@ pub struct Config {
 // Returns a PathBuf to the configuration file.
 fn get_config_path() -> Result<PathBuf> {
     let mut path = dirs::config_dir().context("Could not find config directory")?;
-
     path.push("s3-wayfinder");
     path.push("config.toml");
 
@@ -49,53 +48,49 @@ fn get_config_path() -> Result<PathBuf> {
 
 // Read and deserialize the TOML configuration file into a Config struct.
 // Return an error if the file does not exist or cannot be read/parsed.
-fn load_config() -> Result<Config> {
-    let config_path = get_config_path()?;
-    let content = fs::read_to_string(&config_path)
+fn load_from_path(config_path: &PathBuf) -> Result<Config> {
+    let content = fs::read_to_string(config_path)
         .with_context(|| format!("Failed to read config file at {:?}", config_path))?;
-    let config: Config = toml::from_str(&content)
+    let config = toml::from_str(&content)
         .with_context(|| format!("Failed to parse config file at {:?}", config_path))?;
 
     debug!("Loaded configuration from {:?}", config_path);
-
     Ok(config)
 }
 
 // Saves the Config struct to the TOML configuration file.
 // Returns an error if the file cannot be written.
-fn save_config(config: &Config) -> Result<()> {
-    let config_path = get_config_path()?;
-
+fn save_to_path(config_path: &PathBuf, config: &Config) -> Result<()> {
     if let Some(parent) = config_path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create config directory at {:?}", parent))?;
     }
 
     let content = toml::to_string_pretty(config).context("Failed to serialize configuration")?;
-    fs::write(&config_path, content)
+    fs::write(config_path, content)
         .with_context(|| format!("Failed to write config file to {:?}", config_path))?;
 
     debug!("Configuration saved to {:?}", config_path);
-
     Ok(())
 }
 
-/// # Handle Configuration
-/// Handles loading the configuration file, creating a default one if it doesn't exist,
-/// and setting up the AWS S3 configuration.
+/// # Load Configuration
+/// Load the configuration file, create a default one if it doesn't exist,
+/// and then setup the AWS S3 configuration.
 ///
 /// # Errors
 /// Returns an error if there are issues loading or saving the configuration file.
 ///
 /// # Returns
 /// Ok(aws_sdk_s3::Config) - The configured AWS S3 configuration object.
-pub fn handle_config() -> Result<aws_sdk_s3::Config> {
-    let config = match load_config() {
+pub fn load() -> Result<aws_sdk_s3::Config> {
+    let config_path = get_config_path()?;
+    let config = match load_from_path(&config_path) {
         Ok(config) => config,
-
-        Err(e) => {
-            if e.downcast_ref::<std::io::Error>()
-                .is_some_and(|io| io.kind() == ErrorKind::NotFound)
+        Err(err) => {
+            if err
+                .downcast_ref::<std::io::Error>()
+                .is_some_and(|io_err| io_err.kind() == ErrorKind::NotFound)
             {
                 debug!("No configuration file found. Creating a default one.");
 
@@ -105,8 +100,7 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config> {
                     region: "us-east-1".to_string(),
                     endpoint_url: None,
                 };
-
-                save_config(&new_config)
+                save_to_path(&config_path, &new_config)
                     .context("Fatal: Could not save a new configuration file")?;
 
                 eprintln!(
@@ -116,18 +110,10 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config> {
 
                 new_config
             } else {
-                return Err(e).context("Fatal: Error loading configuration");
+                return Err(err).context("Fatal: Error loading configuration");
             }
         }
     };
-
-    let debug_config = Config {
-        access_key_id: "REDACTED".to_string(),
-        secret_access_key: "REDACTED".to_string(),
-        region: config.region.clone(),
-        endpoint_url: config.endpoint_url.clone(),
-    };
-    debug!("Current configuration: {:?}", debug_config);
 
     let Config {
         access_key_id,
@@ -151,11 +137,8 @@ pub fn handle_config() -> Result<aws_sdk_s3::Config> {
         } else {
             format!("https://{}", url)
         };
-
         s3_config_builder = s3_config_builder.endpoint_url(url).force_path_style(true);
     }
 
-    let s3_config = s3_config_builder.build();
-
-    Ok(s3_config)
+    Ok(s3_config_builder.build())
 }

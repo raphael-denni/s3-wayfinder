@@ -17,7 +17,7 @@ use aws_sdk_s3::Client;
 ///
 /// # Errors
 /// Returns an error if there are issues during the move operation.
-pub async fn run_mv(client: &Client, source_path: &str, destination_path: &str) -> Result<()> {
+pub async fn run(client: &Client, source_path: &str, destination_path: &str) -> Result<()> {
     let dest_is_s3_path = destination_path.starts_with("s3://");
     let (source_bucket, source_key) = match tools::parse_s3_path(source_path) {
         Ok((bucket, key)) => (bucket, key),
@@ -65,5 +65,6 @@ pub async fn run_mv(client: &Client, source_path: &str, destination_path: &str) 
         "Successfully moved object from '{}' to '{}'.",
         source_path, destination_path
     );
+
     Ok(())
 }

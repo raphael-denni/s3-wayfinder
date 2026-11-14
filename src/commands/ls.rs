@@ -9,7 +9,7 @@ use tracing::debug;
 
 /// # List S3 Buckets
 /// Returns a list of bucket names
-pub async fn list_buckets(client: &Client) -> Result<Vec<String>> {
+pub async fn list_from_storage(client: &Client) -> Result<Vec<String>> {
     let output = client
         .list_buckets()
         .send()
@@ -20,7 +20,7 @@ pub async fn list_buckets(client: &Client) -> Result<Vec<String>> {
         .buckets
         .unwrap_or_default()
         .into_iter()
-        .map(|b| b.name.unwrap_or_else(|| "N/A".to_string()))
+        .map(|bucket| bucket.name.unwrap_or_else(|| "N/A".to_string()))
         .collect();
 
     Ok(buckets)
@@ -28,7 +28,7 @@ pub async fn list_buckets(client: &Client) -> Result<Vec<String>> {
 
 /// # List S3 Objects
 /// Returns a list of object keys in the specified bucket.
-pub async fn list_objects(client: &Client, bucket: &str) -> Result<Vec<String>> {
+pub async fn list_from_bucket(client: &Client, bucket: &str) -> Result<Vec<String>> {
     let mut paginator = client
         .list_objects_v2()
         .bucket(bucket)
@@ -61,7 +61,7 @@ pub async fn list_objects(client: &Client, bucket: &str) -> Result<Vec<String>> 
 ///
 /// # Errors
 /// Returns an error if there are issues listing buckets or objects.
-pub async fn run_ls(client: &Client, bucket_path: Option<&str>) -> Result<()> {
+pub async fn run(client: &Client, bucket_path: Option<&str>) -> Result<()> {
     match bucket_path {
         Some(bucket_path) => {
             let bucket_name = bucket_path
@@ -69,7 +69,7 @@ pub async fn run_ls(client: &Client, bucket_path: Option<&str>) -> Result<()> {
                 .context("Bucket path must start with 's3://'")?;
             debug!("Listing objects in bucket: {}.", bucket_name);
 
-            let objects = list_objects(client, bucket_name).await?;
+            let objects = list_from_bucket(client, bucket_name).await?;
 
             if objects.is_empty() {
                 eprintln!("No objects found in bucket '{}'.", bucket_name);
@@ -83,7 +83,7 @@ pub async fn run_ls(client: &Client, bucket_path: Option<&str>) -> Result<()> {
         }
 
         None => {
-            let buckets = list_buckets(client).await?;
+            let buckets = list_from_storage(client).await?;
 
             if buckets.is_empty() {
                 eprintln!("No S3 buckets found.");

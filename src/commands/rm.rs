@@ -45,7 +45,7 @@ pub async fn delete_bucket(client: &Client, bucket: &str) -> Result<()> {
 ///
 /// # Errors
 /// Returns an error if there are issues during the deletion operation.
-pub async fn run_rm(client: &Client, s3_path: &str) -> Result<()> {
+pub async fn run(client: &Client, s3_path: &str) -> Result<()> {
     let (bucket, s3_object) = parse_s3_path(s3_path)?;
     if let Some(object_key) = s3_object {
         debug!("Deleting object '{}' from bucket '{}'.", object_key, bucket);

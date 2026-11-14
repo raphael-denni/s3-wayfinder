@@ -42,72 +42,6 @@ struct CurrentSelection {
     object: String,
 }
 
-/// # TUI Application Entry Point
-/// This function initializes and runs the terminal user interface (TUI)
-///
-/// # Arguments
-/// * `client` - An AWS S3 client instance for interacting with S3 services.
-///
-/// # Returns
-/// A Result indicating success or failure of the TUI application.
-///
-/// # Errors
-/// This function may return an error if terminal initialization or TUI execution fails.
-pub async fn run_tui(client: &Client) -> Result<()> {
-    terminal::enable_raw_mode().context("Failed to enable raw mode")?;
-
-    let mut stdout = io::stdout();
-
-    execute!(
-        stdout,
-        terminal::EnterAlternateScreen,
-        event::EnableMouseCapture
-    )
-    .context("Failed to enter alternate screen")?;
-
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal_instance =
-        Terminal::new(backend).context("Failed to create terminal instance")?;
-
-    let (items, status) = match ls::list_buckets(client).await {
-        Ok(buckets) => (buckets, "Connected to S3".to_string()),
-        Err(e) => (Vec::new(), format!("Error: {:#}", e)),
-    };
-
-    let mut app = App {
-        items,
-        state: ListState::default(),
-        status,
-        view: View::Buckets,
-        confirm_delete: false,
-    };
-
-    if !app.items.is_empty() {
-        app.state.select(Some(0));
-    }
-
-    let app_result = main_loop(client, &mut terminal_instance, &mut app).await;
-
-    terminal::disable_raw_mode().context("Failed to disable raw mode")?;
-
-    execute!(
-        terminal_instance.backend_mut(),
-        terminal::LeaveAlternateScreen,
-        event::DisableMouseCapture
-    )
-    .context("Failed to leave alternate screen")?;
-
-    terminal_instance
-        .show_cursor()
-        .context("Failed to show cursor")?;
-
-    if let Err(e) = app_result {
-        bail!("Error in TUI main loop: {:#}", e)
-    }
-
-    Ok(())
-}
-
 // Update current frame with the latest application state.
 fn update_frame(app: &mut App, frame: &mut Frame) {
     let chunks = Layout::default()
@@ -219,7 +153,7 @@ async fn main_loop<B: Backend>(
 
                 let selected_element = app.items[i].clone();
                 match &app.view {
-                    View::Buckets => match ls::list_objects(client, &selected_element).await {
+                    View::Buckets => match ls::list_from_bucket(client, &selected_element).await {
                         Ok(objects) => {
                             app.status = format!("Viewing bucket: {}", selected_element);
 
@@ -250,7 +184,7 @@ async fn main_loop<B: Backend>(
 
                 match &app.view {
                     View::Buckets => {}
-                    View::Objects { .. } => match ls::list_buckets(client).await {
+                    View::Objects { .. } => match ls::list_from_storage(client).await {
                         Ok(buckets) => {
                             app.items = buckets;
                             app.view = View::Buckets;
@@ -265,7 +199,7 @@ async fn main_loop<B: Backend>(
             }
 
             event::KeyCode::Char('r') => match &app.view {
-                View::Buckets => match ls::list_buckets(client).await {
+                View::Buckets => match ls::list_from_storage(client).await {
                     Ok(buckets) => {
                         app.items = buckets;
                         app.state
@@ -275,7 +209,7 @@ async fn main_loop<B: Backend>(
 
                     Err(e) => app.status = format!("Error: {:#}", e),
                 },
-                View::Objects { bucket } => match ls::list_objects(client, bucket).await {
+                View::Objects { bucket } => match ls::list_from_bucket(client, bucket).await {
                     Ok(objects) => {
                         app.items = objects;
                         app.state
@@ -305,7 +239,7 @@ async fn main_loop<B: Backend>(
                         }
                     };
 
-                    match ls::list_buckets(client).await {
+                    match ls::list_from_storage(client).await {
                         Ok(buckets) => {
                             app.items = buckets;
                             app.state
@@ -355,7 +289,7 @@ async fn main_loop<B: Backend>(
                             );
 
                             // Refresh the object list
-                            match ls::list_objects(client, bucket).await {
+                            match ls::list_from_bucket(client, bucket).await {
                                 Ok(objects) => {
                                     app.items = objects;
                                     app.state.select(if app.items.is_empty() {
@@ -416,7 +350,7 @@ async fn main_loop<B: Backend>(
                     );
 
                     // Refresh the object list
-                    match ls::list_objects(client, bucket).await {
+                    match ls::list_from_bucket(client, bucket).await {
                         Ok(objects) => {
                             app.items = objects;
                             app.state
@@ -447,7 +381,7 @@ async fn main_loop<B: Backend>(
                             Ok(_) => {
                                 app.status = format!("Deleted bucket {}", bucket_name);
 
-                                match ls::list_buckets(client).await {
+                                match ls::list_from_storage(client).await {
                                     Ok(buckets) => {
                                         app.items = buckets;
                                         app.state.select(if app.items.is_empty() {
@@ -473,7 +407,7 @@ async fn main_loop<B: Backend>(
                                 app.status =
                                     format!("Deleted object {} from bucket {}", object_key, bucket);
 
-                                match ls::list_objects(client, bucket).await {
+                                match ls::list_from_bucket(client, bucket).await {
                                     Ok(objects) => {
                                         app.items = objects;
                                         app.state.select(if app.items.is_empty() {
@@ -503,4 +437,70 @@ async fn main_loop<B: Backend>(
             }
         }
     }
+}
+
+/// # TUI Application Entry Point
+/// This function initializes and runs the terminal user interface (TUI)
+///
+/// # Arguments
+/// * `client` - An AWS S3 client instance for interacting with S3 services.
+///
+/// # Returns
+/// A Result indicating success or failure of the TUI application.
+///
+/// # Errors
+/// This function may return an error if terminal initialization or TUI execution fails.
+pub async fn run(client: &Client) -> Result<()> {
+    terminal::enable_raw_mode().context("Failed to enable raw mode")?;
+
+    let mut stdout = io::stdout();
+
+    execute!(
+        stdout,
+        terminal::EnterAlternateScreen,
+        event::EnableMouseCapture
+    )
+    .context("Failed to enter alternate screen")?;
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal_instance =
+        Terminal::new(backend).context("Failed to create terminal instance")?;
+
+    let (items, status) = match ls::list_from_storage(client).await {
+        Ok(buckets) => (buckets, "Connected to S3".to_string()),
+        Err(e) => (Vec::new(), format!("Error: {:#}", e)),
+    };
+
+    let mut app = App {
+        items,
+        state: ListState::default(),
+        status,
+        view: View::Buckets,
+        confirm_delete: false,
+    };
+
+    if !app.items.is_empty() {
+        app.state.select(Some(0));
+    }
+
+    let app_result = main_loop(client, &mut terminal_instance, &mut app).await;
+
+    terminal::disable_raw_mode().context("Failed to disable raw mode")?;
+
+    execute!(
+        terminal_instance.backend_mut(),
+        terminal::LeaveAlternateScreen,
+        event::DisableMouseCapture
+    )
+    .context("Failed to leave alternate screen")?;
+
+    terminal_instance
+        .show_cursor()
+        .context("Failed to show cursor")?;
+
+    if let Err(e) = app_result {
+        bail!("Error in TUI main loop: {:#}", e)
+    }
+
+    Ok(())
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! # s3-wayfinder CLI Application
-//! This is the main entry point for the s3-wayfinder CLI application.
+//! # s3-wayfinder CLI/TUI Application
+//! This is the main entry point for the s3-wayfinder CLI/TUI application.
 //! It initializes the AWS S3 client, handles configuration,
 //! and dispatches commands based on user input.
 
@@ -15,26 +15,22 @@ mod commands;
 mod config;
 mod tui;
 
-// The main entry point for the s3-wayfinder CLI application.
-async fn run_app() -> Result<()> {
-    let s3_config = config::handle_config()?;
-    let client = Client::from_conf(s3_config);
-
-    let cli = commands::Cli::parse();
+// Command dispatcher that routes the CLI commands to their respective handlers.
+async fn execute_command(client: &Client, cli: commands::Cli) -> Result<()> {
     match &cli.commands {
         Some(commands::Commands::Ls { bucket_path }) => {
             debug!("'ls' command called");
-            commands::ls::run_ls(&client, bucket_path.as_deref()).await?;
+            commands::ls::run(client, bucket_path.as_deref()).await?;
         }
 
         Some(commands::Commands::Mk { bucket_path }) => {
             debug!("'mk' command called");
-            commands::mk::run_mk(&client, bucket_path).await?;
+            commands::mk::run(client, bucket_path).await?;
         }
 
         Some(commands::Commands::Rm { s3_path }) => {
             debug!("'rm' command called");
-            commands::rm::run_rm(&client, s3_path).await?;
+            commands::rm::run(client, s3_path).await?;
         }
 
         Some(commands::Commands::Cp {
@@ -42,7 +38,7 @@ async fn run_app() -> Result<()> {
             destination_path,
         }) => {
             debug!("'cp' command called");
-            commands::cp::run_cp(&client, source_path, destination_path).await?;
+            commands::cp::run(client, source_path, destination_path).await?;
         }
 
         Some(commands::Commands::Mv {
@@ -50,18 +46,19 @@ async fn run_app() -> Result<()> {
             destination_path,
         }) => {
             debug!("'mv' command called");
-            commands::mv::run_mv(&client, source_path, destination_path).await?;
+            commands::mv::run(client, source_path, destination_path).await?;
         }
 
         Some(commands::Commands::Tui) | None => {
             debug!("'tui' started");
-            tui::run_tui(&client).await?;
+            tui::run(client).await?;
         }
     }
 
     Ok(())
 }
 
+// The main entry point for the s3-wayfinder CLI application.
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -71,9 +68,14 @@ async fn main() -> Result<()> {
         .with_writer(std::io::stderr)
         .init();
 
-    if let Err(err) = run_app().await {
+    let cli = commands::Cli::parse();
+    let result = match config::load() {
+        Ok(config) => execute_command(&Client::from_conf(config), cli).await,
+        Err(err) => Err(err),
+    };
+
+    if let Err(err) = result {
         error!(error = ?err, "Application crashed with");
-        // eprintln!("Error: {:#}", err);
         std::process::exit(1);
     }
 
