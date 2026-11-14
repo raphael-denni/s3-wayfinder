@@ -43,7 +43,7 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 
 ### Phase 4: Enhancements and polish (v0.3.0)
 
-- [ ] Multi-profiles configuration with default
+- [x] Multi-profiles configuration with default
 - [ ] Nesting of buckets and folders
 - [ ] Complete the wiki for documentation
 

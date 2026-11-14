@@ -7,12 +7,14 @@
 //! The configuration file is stored in the user's configuration directory
 //! under a subdirectory named `s3-wayfinder`.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use aws_sdk_s3::config::{Credentials, Region};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::ErrorKind;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::str::FromStr;
 use tracing::debug;
 
 /// # Configuration Structure
@@ -36,39 +38,92 @@ pub struct Config {
     pub endpoint_url: Option<String>,
 }
 
+const DEFAULT_CONFIG_PATH: &str = "s3-wayfinder/config.toml";
+
 // Determines the platform-specific configuration file path and ensures the directory exists.
 // Returns a PathBuf to the configuration file.
 fn get_config_path() -> Result<PathBuf> {
     let mut path = dirs::config_dir().context("Could not find config directory")?;
-    path.push("s3-wayfinder");
-    path.push("config.toml");
-
+    path.push(DEFAULT_CONFIG_PATH);
     Ok(path)
 }
 
 // Read and deserialize the TOML configuration file into a Config struct.
 // Return an error if the file does not exist or cannot be read/parsed.
-fn load_from_path(config_path: &PathBuf) -> Result<Config> {
+fn load_from_path(config_path: &PathBuf, profile_name: Option<&str>) -> Result<Config> {
     let content = fs::read_to_string(config_path)
         .with_context(|| format!("Failed to read config file at {:?}", config_path))?;
-    let config = toml::from_str(&content)
+    let config_table = toml::Table::from_str(&content)
         .with_context(|| format!("Failed to parse config file at {:?}", config_path))?;
 
-    debug!("Loaded configuration from {:?}", config_path);
-    Ok(config)
+    let profile_name =
+        profile_name.or_else(|| config_table.get("default_profile").and_then(|v| v.as_str()));
+
+    let profile_config = match profile_name {
+        Some(profile_name) => {
+            if let Some(profile_table) = config_table
+                .get("profiles")
+                .and_then(|p| p.get(profile_name))
+            {
+                profile_table
+                    .clone()
+                    .try_into::<Config>()
+                    .with_context(|| {
+                        format!(
+                            "Failed to deserialize profile '{}' in config file at {:?}",
+                            profile_name, config_path
+                        )
+                    })?
+            } else {
+                bail!(
+                    "Profile '{}' not found in config file at {:?}",
+                    profile_name,
+                    config_path
+                );
+            }
+        }
+        None => {
+            bail!(
+                "No profile specified and default_profile not set in config file at {:?}",
+                config_path
+            );
+        }
+    };
+
+    debug!(
+        "Loaded profile configuration {} from {:?}",
+        profile_name.unwrap_or_default(),
+        config_path
+    );
+    Ok(profile_config)
 }
 
 // Saves the Config struct to the TOML configuration file.
 // Returns an error if the file cannot be written.
-fn save_to_path(config_path: &PathBuf, config: &Config) -> Result<()> {
+fn create_default_config(config_path: &PathBuf, config: &Config) -> Result<()> {
     if let Some(parent) = config_path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create config directory at {:?}", parent))?;
     }
 
-    let content = toml::to_string_pretty(config).context("Failed to serialize configuration")?;
+    let mut content =
+        toml::to_string_pretty(config).context("Failed to serialize configuration")?;
+    content = format!(
+        "{}{}{}{}",
+        "default_profile = \"default\"\n\n",
+        "[profiles.default]\n",
+        content,
+        "# endpoint_url = \"\"\n"
+    );
+
     fs::write(config_path, content)
         .with_context(|| format!("Failed to write config file to {:?}", config_path))?;
+    fs::set_permissions(config_path, fs::Permissions::from_mode(0o600)).with_context(|| {
+        format!(
+            "Failed to set permissions for config file at {:?}",
+            config_path
+        )
+    })?;
 
     debug!("Configuration saved to {:?}", config_path);
     Ok(())
@@ -83,9 +138,9 @@ fn save_to_path(config_path: &PathBuf, config: &Config) -> Result<()> {
 ///
 /// # Returns
 /// Ok(aws_sdk_s3::Config) - The configured AWS S3 configuration object.
-pub fn load() -> Result<aws_sdk_s3::Config> {
+pub fn load(profile_name: Option<&str>) -> Result<aws_sdk_s3::Config> {
     let config_path = get_config_path()?;
-    let config = match load_from_path(&config_path) {
+    let config = match load_from_path(&config_path, profile_name) {
         Ok(config) => config,
         Err(err) => {
             if err
@@ -100,15 +155,13 @@ pub fn load() -> Result<aws_sdk_s3::Config> {
                     region: "us-east-1".to_string(),
                     endpoint_url: None,
                 };
-                save_to_path(&config_path, &new_config)
+                create_default_config(&config_path, &new_config)
                     .context("Fatal: Could not save a new configuration file")?;
 
-                eprintln!(
-                    "Default configuration file created at standard location,\n
-                     please edit it with your S3 credentials before proceeding."
+                bail!(
+                    "Fatal: No configuration file found. A default one has been created at {:?}. Please edit it with your S3 credentials.",
+                    config_path
                 );
-
-                new_config
             } else {
                 return Err(err).context("Fatal: Error loading configuration");
             }

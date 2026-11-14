@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
         .init();
 
     let cli = commands::Cli::parse();
-    let result = match config::load() {
+    let result = match config::load(cli.profile.as_deref()) {
         Ok(config) => execute_command(&Client::from_conf(config), cli).await,
         Err(err) => Err(err),
     };
