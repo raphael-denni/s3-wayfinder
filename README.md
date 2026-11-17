@@ -1,4 +1,4 @@
-# S3 Wayfinder – a friendly Rust TUI/CLI for S3-compatible object storage
+# S3 Wayfinder, a friendly Rust TUI/CLI for S3-compatible object storage
 
 _Through the wilderness of object storage, S3 Wayfinder will be your guide._
 
@@ -34,18 +34,23 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 - [x] Conditional launch
 - [x] Connect S3 logics
 
-### Phase 3: Advanced features (v0.2.0)
+### Phase 3: CLI extension (v0.2.0)
 
 - [x] Configure Forgejo actions in Codeberg for package distribution
 - [x] Add 'mk' command for bucket creation
-- [x] Add 'mv' command for moving/renaming objects/buckets
+- [x] Add 'mv' command for moving/renaming objects
 - [x] Integrate 'mk' and 'mv' into the TUI
 
-### Phase 4: Enhancements and polish (v0.3.0)
+### Phase 4: Profiles (v0.3.0)
 
 - [x] Multi-profiles configuration with default
+- [x] Open editor for default configuration
+- [x] Command to edit configuration file
+
+### Phase 5: Nesting & Documentation (v0.4.0)
 - [ ] Nesting of buckets and folders
 - [ ] Complete the wiki for documentation
+- [ ] Help panel
 
 ### Sides
 
@@ -55,13 +60,16 @@ Using CLI tools for S3-compatible storage can be very hard to use, especially fo
 
 ## 📦 Installation
 
+### MSRV
+The minimum supported Rust version (MSRV) for S3 Wayfinder is **1.99.1**.
+
 ### From precompiled binaries
 
 You can install S3 Wayfinder by downloading the precompiled binaries from the [Releases](https://codeberg.org/raphael-denni/s3-wayfinder/releases) page on Codeberg. Choose the appropriate binary for your operating system and architecture. (No binaries for macOS, I don't have a Mac to build them, sorry!)
 
 ### From source
 
-To build S3 Wayfinder from source, you need to have Rust and Cargo installed on your system. You can then clone the repository and build the project using the following commands:
+To build S3 Wayfinder from source, you need to have **Rust**, **Cargo** and the linker **"mold"** installed on your system. You can then clone the repository and build the project using the following commands:
 
 ```bash
 git clone https://codeberg.org/raphael-denni/s3-wayfinder.git

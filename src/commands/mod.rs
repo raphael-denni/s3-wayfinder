@@ -69,6 +69,10 @@ pub struct Cli {
     #[command(subcommand)]
     pub commands: Option<Commands>,
 
+    /// Open the configuration file in user defined editor or system default.
+    #[arg(long, short)]
+    pub edit_config: bool,
+
     /// Optional AWS profile to use for the command. If not provided, the default profile will be used.
     #[arg(long, short, global = true, env = "S3WF_PROFILE")]
     pub profile: Option<String>,

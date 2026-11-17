@@ -11,17 +11,14 @@
 use crate::commands::{cp, ls, rm};
 use anyhow::{Context, Result, bail};
 use aws_sdk_s3::Client;
+use std::io;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use ratatui::crossterm::{event, execute, terminal};
-use ratatui::{
-    Frame, Terminal,
-    layout::{Constraint, Direction, Layout},
-    prelude::{Backend, CrosstermBackend},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
-};
-use std::{
-    io,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::prelude::{Backend, CrosstermBackend};
+use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
+use ratatui::{Frame, Terminal};
 
 enum View {
     Buckets,
