@@ -43,8 +43,7 @@ pub struct Config {
 
 const DEFAULT_CONFIG_PATH: &str = "s3-wayfinder/config.toml";
 
-// Determines the platform-specific configuration file path and ensures the directory exists.
-// Returns a PathBuf to the configuration file.
+// Determines the platform-specific configuration file path and returns it as a PathBuf.
 fn get_config_path() -> Result<PathBuf> {
     let mut path = dirs::config_dir().context("Could not find config directory")?;
     path.push(DEFAULT_CONFIG_PATH);

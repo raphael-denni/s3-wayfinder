@@ -11,7 +11,7 @@ env:
 jobs:
   build-linux:
     name: Build Release (Linux x64)
-    runs-on: codeberg-medium-lazy
+    runs-on: docker
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -22,7 +22,7 @@ jobs:
           packages: libssl-dev pkg-config zip mold
 
       - name: Build Release
-        run: cargo build --verbose --release
+        run: cargo build --verbose --release --locked
 
       - name: Package (Linux)
         run: |
@@ -39,7 +39,7 @@ jobs:
 
   build-windows:
     name: Build Release (Windows x64)
-    runs-on: codeberg-medium-lazy
+    runs-on: docker
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -54,10 +54,10 @@ jobs:
       - name: Install Zig
         uses: https://codeberg.org/mlugg/setup-zig@v2
         with:
-          version: 0.17.0
+          version: 0.17.1
 
       - name: Build Release (Windows)
-        run: cargo zigbuild --verbose --release --target x86_64-pc-windows-gnullvm
+        run: cargo zigbuild --verbose --release --locked --target x86_64-pc-windows-gnullvm
 
       - name: Package (Windows)
         run: |
