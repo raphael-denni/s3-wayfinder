@@ -1,3 +1,25 @@
+## [0.3.0] - 2026-11-18
+
+### 🚀 Features
+
+- *(ci)* Automatic release notes
+- *(ci)* Using custom rust setup action
+- *(profiles)* Multi-profiles config w/ default
+- *(config)* Edit options using external editor
+
+### ⚡ Performance
+
+- *(build)* Mold linker w/ lto, codegen-units, strip & opt-level tunings
+- *(ci)* Gnullvm w/ zigbuild for windows builds
+
+### 🚜 Refactor
+
+- Rename entrypoints to run & restructure code
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version to v0.3.0 & bump deps
+
 ## [0.2.0] - 2026-10-27
 
 ### 🚀 Features

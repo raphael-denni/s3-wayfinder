@@ -2,8 +2,7 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v[0-9]*'
+    tags: [ 'v[0-9]+.[0-9]+.[0-9]+' ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -11,7 +10,7 @@ env:
 jobs:
   build-linux:
     name: Build Release (Linux x64)
-    runs-on: codeberg-medium-lazy
+    runs-on: codeberg-medium
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -22,7 +21,7 @@ jobs:
           packages: libssl-dev pkg-config zip mold
 
       - name: Build Release
-        run: cargo build --verbose --release
+        run: cargo build --verbose --release --locked
 
       - name: Package (Linux)
         run: |
@@ -39,7 +38,7 @@ jobs:
 
   build-windows:
     name: Build Release (Windows x64)
-    runs-on: codeberg-medium-lazy
+    runs-on: codeberg-medium
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -54,10 +53,10 @@ jobs:
       - name: Install Zig
         uses: https://codeberg.org/mlugg/setup-zig@v2
         with:
-          version: 0.17.0
+          version: 0.17.1
 
       - name: Build Release (Windows)
-        run: cargo zigbuild --verbose --release --target x86_64-pc-windows-gnullvm
+        run: cargo zigbuild --verbose --release --locked --target x86_64-pc-windows-gnullvm
 
       - name: Package (Windows)
         run: |
@@ -75,7 +74,7 @@ jobs:
   publish:
     name: Publish Release
     needs: [build-linux, build-windows]
-    runs-on: codeberg-tiny-lazy
+    runs-on: codeberg-tiny
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -83,12 +82,13 @@ jobs:
           fetch-depth: 0
 
       - name: Generate a release notes
-        uses: https://github.com/orhun/git-cliff-action@v4
-        with:
-          config: cliff.toml
-          args: --verbose --current
         env:
-          OUTPUT: RELEASE_NOTES.md
+          VERSION: "2.14.2"
+        run: |
+          curl -fsSL -o git-cliff.tar.gz \
+                "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          tar -xzf git-cliff.tar.gz --strip-components=1 "git-cliff-${VERSION}/git-cliff"
+          ./git-cliff --verbose --current -o RELEASE_NOTES.md
 
       - name: Check & strip version header
         run: |
@@ -118,4 +118,4 @@ jobs:
           release-dir: assets
           token: ${{ forgejo.token }}
           release-notes-file: RELEASE_NOTES.md
-          prerelease: ${{ startsWith(forgejo.ref_name, 'v0.') || contains(forgejo.ref_name, '-rc') }}
+          prerelease: ${{ startsWith(forgejo.ref_name, 'v0.') }}

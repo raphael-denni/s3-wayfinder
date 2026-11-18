@@ -2,9 +2,9 @@ name: Development
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,7 +12,7 @@ env:
 jobs:
   lint:
     name: Lint & Format
-    runs-on: codeberg-small-lazy
+    runs-on: codeberg-small
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -31,7 +31,7 @@ jobs:
 
   tests:
     name: Test (Linux Dev)
-    runs-on: codeberg-small-lazy
+    runs-on: codeberg-small
     steps:
       - name: Checkout
         uses: actions/checkout@v6
